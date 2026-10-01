@@ -1,0 +1,5 @@
+# Local Pi runtime state
+.atl/
+
+# Held-out Day 5 feature
+day5.md
