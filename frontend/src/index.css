@@ -1,0 +1,3 @@
+@import "tailwindcss";
+@import "../node_modules/@kleros/ui-components-library/dist/assets/theme.css";
+@source "../node_modules/@kleros/ui-components-library";

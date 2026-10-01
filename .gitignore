@@ -1,5 +1,28 @@
 # Local Pi runtime state
 .atl/
+odd/
 
+# Python
+.venv/
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.sqlite3
+db.sqlite3
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Secrets
+backend/.env*
+!backend/.env.example
 # Held-out Day 5 feature
 day5.md

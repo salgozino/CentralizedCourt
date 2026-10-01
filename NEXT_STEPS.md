@@ -4,13 +4,18 @@ Update at the end of each session. Keep it short: someone (or a fresh agent) sho
 be able to resume from here.
 
 ## Current state
-- Project brief, acceptance list and logs created. No code yet.
+
+- Project brief, acceptance list and logs created.
+- Scaffold done: Django + django-ninja backend (empty API) and Vite + React 18 +
+  Tailwind v4 + kleros-ui frontend. Both start locally and `make test` runs one dummy
+  test per side. No domain code yet.
+- Agent instructions in `AGENTS.md` (how to set up, run and test the app).
 
 ## Next
-1. Choose the stack and set up the project so it runs locally.
-2. Add project instructions for the agent (e.g. `CLAUDE.md`) and commit them.
-3. Start slice 1: login + roles + whitelist.
+
+1. Start slice 1: login + roles + whitelist. Define a custom `AUTH_USER_MODEL`
+   before the first migration.
 
 ## Open questions / decisions pending
-- Stack (backend, frontend, database).
-- Tie-breaking rule when votes are split.
+
+- Tie-breaking rule when votes are split (needed before slice 4).
