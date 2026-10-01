@@ -1,10 +1,12 @@
 from collections.abc import Iterable
+from datetime import timedelta
 
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
 EXTRA_ROLES = ("creator", "juror")
 ALL_ROLES = ("admin", *EXTRA_ROLES, "user")
+CODE_TTL = timedelta(minutes=10)
 
 
 class UserManager(BaseUserManager):
@@ -59,3 +61,11 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+
+class LoginCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="login_codes")
+    code_hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
