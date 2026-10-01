@@ -3,10 +3,12 @@ from django.urls import path
 from ninja import NinjaAPI
 from ninja.errors import HttpError
 
+from accounts.admin_api import router as admin_router
 from accounts.api import router as accounts_router
 
 api = NinjaAPI(title="CentralizedCourt API")
 api.add_router("", accounts_router)
+api.add_router("/admin", admin_router)
 
 
 @api.exception_handler(HttpError)
