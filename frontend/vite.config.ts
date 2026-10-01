@@ -5,6 +5,12 @@ import { defineConfig } from "vitest/config";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: {
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.ts",
+    globals: false,
+    server: { deps: { inline: [/@kleros\/ui-components-library/] } },
+  },
   server: {
     proxy: {
       "/api": "http://localhost:8000",
