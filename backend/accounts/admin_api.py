@@ -15,6 +15,12 @@ class AdminSessionAuth(SessionAuth):
     Runs before body validation, so non-admins get 403 even with an invalid body.
     """
 
+    def __call__(self, request):
+        # SessionAuth runs the CSRF check first; anonymous requests must get 401, not 403.
+        if not request.user.is_authenticated:
+            return None
+        return super().__call__(request)
+
     def authenticate(self, request, key):
         user = super().authenticate(request, key)
         if user is None:

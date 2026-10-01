@@ -146,3 +146,50 @@ def test_role_change_applies_to_logged_in_user_without_relogin(seeded, login, pu
     assert user_client.get("/api/me").json()["roles"] == ["user"]
     put_json(login("admin@example.com"), roles_url(user_id("user@example.com")), {"roles": ["creator"]})
     assert user_client.get("/api/me").json()["roles"] == ["creator", "user"]
+
+
+@pytest.fixture
+def csrf_client():
+    return Client(enforce_csrf_checks=True)
+
+
+def test_csrf_anonymous_put_is_401(seeded, csrf_client, put_json, user_id):
+    response = put_json(csrf_client, roles_url(user_id("user@example.com")), {"roles": []})
+    assert response.status_code == 401
+
+
+def test_csrf_anonymous_list_is_401(seeded, csrf_client):
+    assert csrf_client.get(LIST_URL).status_code == 401
+
+
+def test_csrf_admin_put_without_token_is_403(seeded, login, csrf_client, put_json, user_id):
+    admin = login("admin@example.com", client=csrf_client)
+    response = put_json(admin, roles_url(user_id("user@example.com")), {"roles": ["juror"]})
+    assert response.status_code == 403
+    assert "CSRF" in response.json()["detail"]
+
+
+def test_csrf_admin_put_with_token_is_200(seeded, login, csrf_client, put_json, user_id):
+    admin = login("admin@example.com", client=csrf_client)
+    token = admin.cookies["csrftoken"].value
+    response = admin.put(
+        roles_url(user_id("user@example.com")),
+        data='{"roles": ["juror"]}',
+        content_type="application/json",
+        headers={"X-CSRFToken": token},
+    )
+    assert response.status_code == 200
+    assert response.json()["roles"] == ["juror", "user"]
+
+
+def test_csrf_non_admin_put_with_token_is_403(seeded, login, csrf_client, user_id):
+    user = login("user@example.com", client=csrf_client)
+    token = user.cookies["csrftoken"].value
+    response = user.put(
+        roles_url(user_id("user@example.com")),
+        data='{"roles": ["juror"]}',
+        content_type="application/json",
+        headers={"X-CSRFToken": token},
+    )
+    assert response.status_code == 403
+    assert "CSRF" not in response.json()["detail"]
