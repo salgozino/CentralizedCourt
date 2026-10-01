@@ -13,7 +13,7 @@ be able to resume from here.
 
 ## Next
 
-1. Start slice 1: login + roles + whitelist. Define a custom `AUTH_USER_MODEL`
+1. Start slice 1: login + roles (spec in `slice1.md`). Define a custom `AUTH_USER_MODEL`
    before the first migration.
 
 ## Open questions / decisions pending
