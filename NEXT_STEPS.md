@@ -26,7 +26,8 @@ be able to resume from here.
 ## Open questions / decisions pending
 
 - Tie-breaking rule when votes are split (needed before slice 4).
-- No rate limit / attempt cap on login codes (6 digits, 10 min TTL). Fine locally; revisit
-  before any non-local use.
+- Login codes are throttled per user: at most 10 failed verifications and 5 issued codes
+  per 15 minutes (older unused codes are revoked on each new request). There is no
+  per-IP limit.
 - Malformed JSON is remapped from ninja's 400 to 422 by matching ninja's error message
   (`config/urls.py`); re-check after ninja upgrades.

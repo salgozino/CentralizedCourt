@@ -5,7 +5,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from accounts.models import LoginCode
+from accounts.models import LOGIN_THROTTLE_WINDOW, MAX_CODES_PER_WINDOW, MAX_FAILED_VERIFICATIONS, LoginCode
 
 LINE_RE = re.compile(r"^LOGIN CODE (\S+) (\d{6})\n$")
 
@@ -103,11 +103,66 @@ def test_unknown_email_verify(client, post_json, db):
     assert response.status_code == 401
 
 
-def test_older_code_stays_valid(client, post_json, request_code, users):
+def _wrong(code):
+    return f"{(int(code) + 1) % 10**6:06d}"
+
+
+def test_older_code_rejected_after_new_request(client, post_json, request_code, users):
     first = request_code("juror1@example.com")
-    request_code("juror1@example.com")
-    response = post_json(client, "/api/auth/verify", {"email": "juror1@example.com", "code": first})
+    second = request_code("juror1@example.com")
+    body = {"email": "juror1@example.com"}
+    assert post_json(client, "/api/auth/verify", {**body, "code": first}).status_code == 401
+    assert post_json(client, "/api/auth/verify", {**body, "code": second}).status_code == 200
+
+
+def test_one_wrong_attempt_then_correct(client, post_json, request_code, users):
+    code = request_code("juror1@example.com")
+    body = {"email": "juror1@example.com"}
+    assert post_json(client, "/api/auth/verify", {**body, "code": _wrong(code)}).status_code == 401
+    assert post_json(client, "/api/auth/verify", {**body, "code": code}).status_code == 200
+
+
+def test_lockout_after_max_failures(client, post_json, request_code, users):
+    code = request_code("juror1@example.com")
+    body = {"email": "juror1@example.com"}
+    for _ in range(MAX_FAILED_VERIFICATIONS):
+        assert post_json(client, "/api/auth/verify", {**body, "code": _wrong(code)}).status_code == 401
+    assert post_json(client, "/api/auth/verify", {**body, "code": code}).status_code == 401
+    fresh = request_code("juror1@example.com")
+    assert fresh is None
+    assert post_json(client, "/api/auth/verify", {**body, "code": code}).status_code == 401
+
+
+def test_failures_survive_new_code_requests(client, post_json, request_code, users):
+    body = {"email": "juror1@example.com"}
+    for _ in range(MAX_FAILED_VERIFICATIONS):
+        code = request_code("juror1@example.com")
+        if code is None:
+            break
+        post_json(client, "/api/auth/verify", {**body, "code": _wrong(code)})
+    assert request_code("juror1@example.com") is None
+
+
+def test_lockout_expires(client, post_json, request_code, users):
+    code = request_code("juror1@example.com")
+    body = {"email": "juror1@example.com"}
+    for _ in range(MAX_FAILED_VERIFICATIONS):
+        post_json(client, "/api/auth/verify", {**body, "code": _wrong(code)})
+    LoginCode.objects.update(created_at=timezone.now() - LOGIN_THROTTLE_WINDOW - timedelta(seconds=1))
+    fresh = request_code("juror1@example.com")
+    assert fresh is not None
+    assert post_json(client, "/api/auth/verify", {**body, "code": fresh}).status_code == 200
+
+
+def test_issuance_cap(client, post_json, request_code, capsys, users):
+    for _ in range(MAX_CODES_PER_WINDOW):
+        assert request_code("juror1@example.com") is not None
+    capsys.readouterr()
+    response = post_json(client, "/api/auth/request-code", {"email": "juror1@example.com"})
     assert response.status_code == 200
+    assert response.json() == {"detail": "If the email exists, a code was sent."}
+    assert "LOGIN CODE" not in capsys.readouterr().out
+    assert LoginCode.objects.filter(user=users["juror1"]).count() == MAX_CODES_PER_WINDOW
 
 
 def test_me_requires_login(client):
