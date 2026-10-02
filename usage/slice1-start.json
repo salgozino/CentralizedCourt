@@ -20,5 +20,5 @@
     "cacheWrite": 0,
     "total": 0.37269800000000003
   },
-  "scope": "Cumulative session usage available before development; not provider quota. Current in-flight response is not included."
+  "scope": "Cumulative session usage records available before development (see last_usage_timestamp); not provider quota."
 }

@@ -1,0 +1,42 @@
+{
+  "captured_at": "2026-10-02T14:37:08.543638+00:00",
+  "session_id": "01a0fcfa-e250-71c2-89dc-5c2cec195d48",
+  "model": "gpt-6-astra",
+  "implementation_commit": "672fc0b1be0adbf4d1dee6c01d27f3098654f16a",
+  "assistant_messages": 52,
+  "last_usage_timestamp": "2026-10-02T14:37:08.500Z",
+  "tokens": {
+    "input": 107646,
+    "output": 19445,
+    "cacheRead": 1347968,
+    "cacheWrite": 0,
+    "reasoning": 1293,
+    "totalTokens": 1475059
+  },
+  "cost_usd_reported_by_harness": {
+    "input": 1.0764599999999998,
+    "output": 0.9722500000000001,
+    "cacheRead": 1.3479679999999998,
+    "cacheWrite": 0,
+    "total": 3.3966779999999996
+  },
+  "elapsed_seconds_since_start": 996.957824,
+  "delta_from_start": {
+    "tokens": {
+      "input": 84972,
+      "output": 17386,
+      "cacheRead": 1304960,
+      "cacheWrite": 0,
+      "reasoning": 1187,
+      "totalTokens": 1407318
+    },
+    "cost_usd_reported_by_harness": {
+      "input": 0.84972,
+      "output": 0.8693,
+      "cacheRead": 1.30496,
+      "cacheWrite": 0,
+      "total": 3.02398
+    }
+  },
+  "scope": "Usage records available at post-validation cutoff (see last_usage_timestamp). Delta excludes scaffold validation. Subsequent log closure and final reply are outside this snapshot; not provider quota or a billing statement."
+}
