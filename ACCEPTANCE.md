@@ -22,3 +22,4 @@ Bugs found after a criterion was marked as passed.
 
 | Date | Criterion # | Description | Found by | Fix commit |
 | ---- | ----------- | ----------- | -------- | ---------- |
+| 2026-10-02 | 1 (admin-only roles) | `PUT /api/admin/users/{id}/roles` validated the body before checking admin, so a non-admin got `422` with role-specific messages instead of `403` and could enumerate roles. | Human review | `dfbd1e6` |
