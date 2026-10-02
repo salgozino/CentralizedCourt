@@ -22,3 +22,4 @@ Bugs found after a criterion was marked as passed.
 
 | Date | Criterion # | Description | Found by | Fix commit |
 | ---- | ----------- | ----------- | -------- | ---------- |
+| 2026-10-02 | 1 | `/api/auth/verify` allowed unlimited code guesses. Fixed with persistent five-attempt/ten-minute account budget, atomic reservation and no reset on code reissue. Evidence: `test_verify_limits.py` (6 regressions), `make e2e` concurrent HTTP attempts. | User validation | `60b0a6f` |

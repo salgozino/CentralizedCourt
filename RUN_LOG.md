@@ -7,7 +7,8 @@ Quota: copy the usage/cost shown by the harness when the task ends.
 
 | Task | Model / harness / effort | Elapsed | Human time | Quota | Rework rounds | Accepted | Escaped defects |
 |------|--------------------------|---------|------------|-------|---------------|----------|-----------------|
-| T1 — Slice 1 | gpt-6-astra / pi / default | 16m 37s | not measured | $3.023980 harness-reported delta | 4 validation fixes | Automated checks pass; human review pending | None observed |
+| T1 — Slice 1 | gpt-6-astra / pi / default | 16m 37s | not measured | $3.023980 harness-reported delta | 4 validation fixes | Automated checks pass; human review pending | Unlimited verify attempts (user validation; fixed in T2) |
+| T2 — Verify attempt limit | gpt-6-astra / pi | 5m 36s | not measured | $1.439262 harness-reported delta | 1 user-reported defect | Automated checks pass; user revalidation pending | See ACCEPTANCE.md |
 
 ## Entries
 
@@ -61,4 +62,10 @@ Quota: copy the usage/cost shown by the harness when the task ends.
 - Usage baseline: `usage/verify-limit-start.json`; harness-reported usage, not provider quota.
 - Human intervention: user reported missing verify attempt limit after slice1 validation.
 - Plan: persistent per-account budget, five verification attempts per ten-minute window; reissuing codes cannot reset the budget; atomic database updates; generic 401 on denial.
-- End / checks / usage delta: pending.
+- End: 2026-10-02T16:22:57.904281+00:00; elapsed 335.57 seconds (5m 36s), excluding log closure.
+- Checks: `make test` (44 backend + 17 frontend); `make build`; `make lint`; `make e2e` including 20 concurrent HTTP verification failures and correct-code rejection after reissue; Django system/migration-drift checks; `git diff --check`. All passed; existing bundle-size warning remains.
+- Migration: `accounts.0002` adds account-wide counters; applied using `make migrate`.
+- Regression coverage: failures commit the counter, fifth attempt can succeed, subsequent correct codes are blocked, reissue/new sessions/case changes cannot bypass, independent account budgets, attempts before code issuance, exact window expiry and retries not extending it.
+- Final snapshot: `usage/verify-limit-end.json`; delta 9,504 input + 4,743 output + 1,107,072 cache-read = 1,121,319 tokens; harness-reported cost delta $1.439262. Subsequent log closure/final reply excluded; not provider quota.
+- Fix commit: `60b0a6f`; user revalidation pending. Escaped defect recorded in `ACCEPTANCE.md`.
+- Limitations: account lockout is temporary and counts successful verifications too. IP/global abuse controls and request-code delivery throttling are separate hardening work; this fix bounds guesses even when codes are reissued.

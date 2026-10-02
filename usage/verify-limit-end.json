@@ -1,0 +1,23 @@
+{
+  "captured_at": "2026-10-02T16:22:57.904281+00:00",
+  "session_id": "01a0fcfa-e250-71c2-89dc-5c2cec195d48",
+  "implementation_commit": "60b0a6f",
+  "tokens": {
+    "input": 128208,
+    "output": 26658,
+    "cacheRead": 2996864,
+    "cacheWrite": 0,
+    "totalTokens": 3151730
+  },
+  "cost_usd_reported_by_harness": 5.611844,
+  "scope": "Available harness usage records at validation cutoff; subsequent log closure and final reply excluded; not provider quota.",
+  "delta_tokens": {
+    "input": 9504,
+    "output": 4743,
+    "cacheRead": 1107072,
+    "cacheWrite": 0,
+    "totalTokens": 1121319
+  },
+  "delta_cost_usd": 1.439262,
+  "elapsed_seconds": 335.573546
+}
