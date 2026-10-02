@@ -54,6 +54,12 @@ def user_out(user: User) -> dict:
     return {"id": user.id, "email": user.email, "roles": user.roles}
 
 
+def client_ip(request) -> str:
+    # REMOTE_ADDR only: X-Forwarded-For is client-controlled unless set by a
+    # trusted proxy, and would let an attacker pick a fresh IP per request.
+    return request.META.get("REMOTE_ADDR") or "0.0.0.0"
+
+
 class AdminSessionAuth(SessionAuth):
     """Session auth that also requires the admin role.
 
@@ -80,13 +86,13 @@ def csrf(request):
 
 @auth_router.post("/request-code", response=MessageOut)
 def request_code(request, payload: RequestCodeIn):
-    request_login_code(payload.email)
+    request_login_code(payload.email, client_ip(request))
     return {"detail": "If the email is registered, a login code has been issued."}
 
 
 @auth_router.post("/verify", response=UserOut)
 def verify(request, payload: VerifyIn):
-    user = verify_login_code(payload.email, payload.code)
+    user = verify_login_code(payload.email, payload.code, client_ip(request))
     if user is None:
         raise HttpError(401, "Invalid or expired code")
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")

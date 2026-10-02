@@ -76,3 +76,17 @@ class LoginCode(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["user", "used_at"])]
+
+
+class LoginThrottleEvent(models.Model):
+    """Login events per client IP, used to rate-limit guessing without locking accounts."""
+
+    CODE_REQUEST = "code_request"
+    FAILED_VERIFY = "failed_verify"
+
+    ip = models.GenericIPAddressField()
+    kind = models.CharField(max_length=16)
+    created_at = models.DateTimeField()
+
+    class Meta:
+        indexes = [models.Index(fields=["ip", "kind", "created_at"])]
