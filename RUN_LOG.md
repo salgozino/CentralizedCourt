@@ -69,3 +69,11 @@ Quota: copy the usage/cost shown by the harness when the task ends.
 - Final snapshot: `usage/verify-limit-end.json`; delta 9,504 input + 4,743 output + 1,107,072 cache-read = 1,121,319 tokens; harness-reported cost delta $1.439262. Subsequent log closure/final reply excluded; not provider quota.
 - Fix commit: `60b0a6f`; user revalidation pending. Escaped defect recorded in `ACCEPTANCE.md`.
 - Limitations: account lockout is temporary and counts successful verifications too. IP/global abuse controls and request-code delivery throttling are separate hardening work; this fix bounds guesses even when codes are reissued.
+
+### T3 — Remove attacker-triggered account lockout
+- Start: 2026-10-02T16:27:38.702389+00:00; starting commit `291bd09` (previous validation passed).
+- Session ID: 01a0fcfa-e250-71c2-89dc-5c2cec195d48; model/harness: gpt-6-astra / pi.
+- Human intervention: user correctly identified that T2 enables email-targeted account denial of service.
+- Plan: browser-bound independent login challenges; atomic five-attempt challenge budget; source/global issuance limits independent of target email; no account lockout. Preserve victim challenges during attacker requests.
+- Usage baseline: `usage/challenge-isolation-start.json`.
+- Result / checks / final usage: pending.

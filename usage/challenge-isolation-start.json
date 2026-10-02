@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-10-02T16:27:38.702389+00:00",
+  "session_id": "01a0fcfa-e250-71c2-89dc-5c2cec195d48",
+  "starting_commit": "291bd09caaa9580a81ffd637cadf2c6d398f5122",
+  "tokens": {
+    "input": 139365,
+    "output": 29948,
+    "cacheRead": 3560192,
+    "totalTokens": 3729505
+  },
+  "cost_usd_reported_by_harness": 6.451242
+}
