@@ -25,9 +25,6 @@ class User(AbstractUser):
     is_creator = models.BooleanField(default=False)
     is_juror = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
-    # Account-wide budget: issuing another LoginCode must not reset it.
-    verification_attempts = models.PositiveSmallIntegerField(default=0)
-    verification_window_ends_at = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -40,8 +37,18 @@ class User(AbstractUser):
 
 
 class LoginCode(models.Model):
-    # Only the latest code for each email is valid. Never store plaintext codes.
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    # Independent browser challenges: issuance never replaces someone else's code.
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     digest = models.CharField(max_length=64)
+    # Legacy codes migrate with NULL binding and cannot be verified.
+    browser_digest = models.CharField(max_length=64, unique=True, null=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
     expires_at = models.DateTimeField()
     used = models.BooleanField(default=False)
+
+
+class LoginIssueBudget(models.Model):
+    # HMAC of the socket peer IP (or global key), never the target email.
+    key = models.CharField(max_length=64, primary_key=True)
+    attempts = models.PositiveIntegerField(default=0)
+    window_ends_at = models.DateTimeField()

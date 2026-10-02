@@ -6,10 +6,12 @@
   idempotent seed, console code login, Django sessions, logout and admin role API.
 - React UI includes login, role-specific home sections and admin role editing.
   CSRF is enforced; profile refresh/refocus shows role changes from other sessions.
-- Verification is limited to five attempts per account per ten-minute window,
-  persisted in SQLite with atomic slot reservation. Reissuing codes cannot reset
-  the budget. Migration `accounts.0002` applied locally; run `make migrate` elsewhere.
-- `make test`: 44 backend + 17 frontend tests pass. `make build`, `make lint` and
+- Login challenges are browser-bound and independently limited to five attempts.
+  Account-wide lockout was removed; attackers cannot exhaust another browser's
+  budget or invalidate its code. SQLite enforces atomic verification and issuance
+  budgets (20 per peer IP / 200 globally per ten minutes). `accounts.0003` applied
+  locally; run `make migrate` elsewhere and re-request any pre-migration codes.
+- `make test`: 53 backend + 17 frontend tests pass. `make build`, `make lint` and
   `make e2e` pass. Browser E2E uses real console codes for all nine users and a
   temporary SQLite database. See `README.md` for run/test instructions.
 - Custom user is in the initial accounts migration. The old empty scaffold
@@ -26,7 +28,8 @@
 ## Open questions / limitations
 
 - Tie-breaking rule when votes are split (needed before slice 4).
-- Local-only login deliberately prints codes. Per-account verification is bounded;
-  IP/global abuse controls, request-code throttling and private delivery remain
-  deployment-hardening work outside this fix.
+- Local-only login deliberately prints codes. IP/global issuance limits can delay
+  new code issuance on a shared NAT/proxy or during a flood; existing challenges
+  remain verifiable. Vite is the socket peer locally. Production needs a trusted
+  proxy policy, adaptive abuse controls and private delivery (see README).
 - Build passes with a large UI-library chunk warning; optimize if needed later.

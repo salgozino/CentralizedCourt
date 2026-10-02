@@ -115,19 +115,30 @@ try {
   const post = (path, data) => userContext.request.post(`${origin}/api/auth/${path}`, {
     data, headers: { 'X-CSRFToken': csrf },
   });
-  // Concurrent HTTP requests exercise SQLite's cross-connection budget updates.
+  await admin.getByRole('button', { name: 'Logout', exact: true }).click();
+  await admin.getByRole('heading', { name: 'Sign in', exact: true }).waitFor();
+  await admin.getByLabel('Email', { exact: true }).fill('admin@example.com');
+  const victimLogStart = backendLog.length;
+  await admin.getByRole('button', { name: 'Request code', exact: true }).click();
+  await admin.getByLabel('6-digit code').waitFor();
+  const victimCode = backendLog.slice(victimLogStart).match(/LOGIN CODE admin@example\.com (\d{6})/)?.[1];
+  assert.ok(victimCode);
+  const attackerLogStart = backendLog.length;
+  assert.equal((await post('request-code', { email: 'admin@example.com' })).status(), 200);
+  const attackerCode = backendLog.slice(attackerLogStart).match(/LOGIN CODE admin@example\.com (\d{6})/)?.[1];
+  assert.ok(attackerCode);
+  // Same IP, separate browsers. Concurrent failures can only exhaust the attacker.
   const attempts = await Promise.all(Array.from({ length: 20 }, () =>
-    post('verify', { email: 'user@example.com', code: 'wrong' })));
+    post('verify', { email: 'admin@example.com', code: 'wrong' })));
   assert.ok(attempts.every((response) => response.status() === 401));
-  for (let retry = 0; retry < 2; retry++) {
-    const logStart = backendLog.length;
-    assert.equal((await post('request-code', { email: 'user@example.com' })).status(), 200);
-    const code = backendLog.slice(logStart).match(/LOGIN CODE user@example\.com (\d{6})/)?.[1];
-    assert.ok(code);
-    assert.equal((await post('verify', { email: 'user@example.com', code })).status(), 401);
-  }
+  assert.equal((await post('verify', { email: 'admin@example.com', code: attackerCode })).status(), 401);
+  // Reissuance cannot invalidate the admin's pending code either.
+  assert.equal((await post('request-code', { email: 'admin@example.com' })).status(), 200);
   assert.equal((await userContext.request.get(`${origin}/api/me`)).status(), 401);
-  console.log('PASS concurrent verification attempts exhaust persistent budget; reissue cannot bypass it');
+  await admin.getByLabel('6-digit code').fill(victimCode);
+  await admin.getByRole('button', { name: 'Verify code', exact: true }).click();
+  await admin.getByRole('heading', { name: 'admin@example.com', exact: true }).waitFor();
+  console.log('PASS attacker exhausts own challenge concurrently and reissues; admin still logs in with original code');
   console.log('PASS slice1 browser E2E (real backend, console codes, session cookies and CSRF)');
 } finally {
   await browser?.close();

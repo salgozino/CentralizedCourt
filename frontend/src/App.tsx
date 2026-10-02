@@ -37,9 +37,9 @@ function Login({ onLogin }: { onLogin: (user: Profile) => void }) {
       <input id="email" type="email" autoComplete="email" required value={email}
         disabled={sent || busy} onChange={(event) => setEmail(event.target.value)} />
       {sent && <>
-        <p role="status">If the account exists, its code is in the backend console. It expires in 10 minutes.
-          You have at most 5 verification attempts per 10 minutes. If blocked, wait before trying again;
-          requesting a new code does not reset this limit.</p>
+        <p role="status">If the account exists and requests are within the limit, its code is in the backend console.
+          Enter it in this browser within 10 minutes. Each code allows 5 attempts.
+          If exhausted, request a new code. Code requests are rate-limited; if none appears, wait 10 minutes.</p>
         <label htmlFor="code">6-digit code</label>
         <input id="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}"
           maxLength={6} required value={code} onChange={(event) => setCode(event.target.value)} />

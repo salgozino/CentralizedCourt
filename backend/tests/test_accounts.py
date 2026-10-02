@@ -80,10 +80,10 @@ def test_wrong_reused_foreign_and_expired_codes(client, capsys):
     assert verify(client, email, wrong).status_code == 401
     assert verify(client, "creator1@example.com", code).status_code == 401
     assert verify(client, email, code).status_code == 200
-    assert verify(Client(), email, code).status_code == 401
+    assert verify(client, email, code).status_code == 401
     code = request_code(client, email, capsys)
     LoginCode.objects.filter(user__email=email).update(expires_at=timezone.now())
-    assert verify(Client(), email, code).status_code == 401
+    assert verify(client, email, code).status_code == 401
 
 
 def test_code_expiry_boundary_and_reissue(client, capsys):
@@ -96,9 +96,9 @@ def test_code_expiry_boundary_and_reissue(client, capsys):
     assert record.expires_at == now + timedelta(minutes=10)
     with patch("accounts.api.secrets.randbelow", return_value=456):
         new = request_code(client, "user@example.com", capsys)
-    assert LoginCode.objects.count() == 1
+    assert LoginCode.objects.count() == 2
     assert verify(client, "user@example.com", old).status_code == 401
-    expires = LoginCode.objects.get().expires_at
+    expires = LoginCode.objects.latest("id").expires_at
     with patch("accounts.api.timezone.now", return_value=expires - timedelta(microseconds=1)):
         assert verify(client, "user@example.com", new).status_code == 200
 

@@ -41,15 +41,21 @@ Passwordless, email + one-time code, no external services.
    cookie).
 3. A code is single-use and expires after 10 minutes. A code is only valid for the
    email it was issued to.
-4. Verification is limited to five attempts per account per ten-minute window,
-   beginning with the first attempt. Attempts (successful or not) share a persistent
-   budget across clients/workers. Issuing another code does not reset it. Exhausted
-   budgets return the same generic `401` as invalid codes; retries do not extend
-   the window. This closes the unlimited-attempts defect found during validation.
+4. Each issuance creates a separate challenge bound to an opaque HttpOnly cookie.
+   Verification requires that cookie and allows five attempts per challenge,
+   persisted atomically across workers. No account-wide lockout: an attacker's
+   requests cannot spend another browser's budget or invalidate its code.
+5. Issuance is bounded to 20 requests per peer IP and 200 globally per ten-minute
+   window, independent of email. Unknown/throttled requests receive the same `200`
+   response and cookie shape, but no code. Existing challenges remain verifiable
+   when issuance is throttled. See README for shared-IP/proxy limitations.
 
 ## API contract
 
 All endpoints under `/api/`. Authentication is the Django session cookie.
+Login clients must also retain the `login_challenge` cookie from request-code
+through verify; payload shapes are unchanged. Exhausted/unbound challenges return
+`401`, identical to invalid codes.
 
 | Method | Path                         | Body                    | Success                                       | Errors                                                     |
 | ------ | ---------------------------- | ----------------------- | --------------------------------------------- | ---------------------------------------------------------- |

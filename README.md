@@ -32,19 +32,30 @@ Open http://localhost:5173. Use `admin@example.com`, `creator1@example.com`,
 LOGIN CODE <email> <code>
 ```
 
-Codes are single-use, expire after ten minutes, and requesting a new code
-invalidates the previous one. Only existing accounts can log in. Unknown emails
-receive the same API response but no console code. Codes are stored as keyed
-hashes; login creates a Django session cookie.
+Codes are single-use and expire after ten minutes. Each issuance creates an
+independent challenge bound to a random 256-bit HttpOnly cookie (`login_challenge`).
+Enter the code in the browser that requested it; API clients must retain cookies
+between request-code and verify. Requesting another code changes only that client's
+cookie; it **does not invalidate any other browser's code**. Only existing accounts
+can log in. Codes and browser bindings are stored as keyed hashes; successful
+verification creates a Django session cookie.
 
-Verification allows at most **five attempts per account per ten-minute window**,
-starting with the first attempt. Every verification (including a successful one)
-uses a slot. The budget is stored in SQLite and reserved atomically across workers;
-changing sessions, restarting the server, or requesting another code does not
-reset it. After five attempts, even a correct code is denied until the window ends.
-Blocked attempts do not extend the window. Denials use the same generic `401` as
-invalid codes/unknown emails. Wait for the window to end and request a fresh code
-if the previous one expired.
+Verification permits **five attempts per challenge**, reserved atomically in
+SQLite across workers. Missing/forged cookies cannot spend someone else's budget.
+After five failures, request a new challenge; its issuance is subject to the limits
+below. Failed/exhausted/expired/foreign challenges all return the same generic
+`401`. There is **no email/account lockout**.
+
+Issuance is limited to **20 requests per socket peer IP and 200 globally per
+ten-minute window**, including unknown emails. Limits persist in SQLite, so
+clearing cookies or restarting Django does not bypass them. All requests receive
+the same `200` body and cookie shape; unknown or throttled requests issue no code.
+New challenges remain bounded even when an attacker rotates cookies. Existing
+valid challenges can be verified even when issuance budgets are exhausted.
+
+Migration `accounts.0003` removes the previous account-wide lockout. Run
+`make migrate` after updating. Legacy unbound codes are no longer accepted; request
+a new code. Existing users, roles and authenticated sessions are preserved.
 
 The admin screen can assign/remove creator and juror roles. It cannot alter the
 admin role. Users can hold multiple roles. Use **Refresh profile**, reload, or
@@ -84,8 +95,13 @@ the cookie after login because Django rotates it. CSRF protection applies to
 login/logout and authenticated role changes.
 
 This is a local demo, not an internet-facing authentication service. Console codes
-are intentional. The account verification budget prevents unlimited code guessing,
-but production deployment would additionally require IP/global abuse controls,
-request-code rate limiting, delivery of codes over a private channel, HTTPS/cookie and host
-configuration, operational logging and deployment hardening. Vite currently warns
+are intentional. Source identification uses `REMOTE_ADDR`, never untrusted
+`X-Forwarded-For`. Vite is the peer for all proxied local requests; NAT/proxy users
+therefore share an issuance budget. An attacker sharing that source can delay
+**new code issuance**, and a distributed flood can exhaust the global issuance
+budget; neither can spend another browser's verification attempts or invalidate
+its already-issued challenge. This is resource throttling, not full DDoS protection.
+A production deployment needs a trusted-proxy/client-IP policy, adaptive abuse
+controls, private code delivery, HTTPS/cookie and host configuration, operational
+logging and deployment hardening. Vite currently warns
 about a >500 kB chunk from the UI-library dependency; the production build passes.
