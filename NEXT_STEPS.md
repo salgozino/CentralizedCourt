@@ -30,17 +30,21 @@ be able to resume from here.
 ## Open questions / decisions pending
 
 - Tie-breaking rule when votes are split (needed before slice 4).
-- Login codes are throttled per user: at most 10 failed verifications and 5 issued codes
-  per 15 minutes (older unused codes are revoked on each new request). There is no
-  per-IP limit.
+- Login codes are bound to the browser session that requested them (only that session can
+  verify them; a new request revokes only that session's older codes). Each code allows
+  5 failed attempts, counted only for codes in the attacker's own session. Per-IP caps
+  (client IP, 15-minute window): 10 code requests (known or unknown email) and 20 failed
+  verifications. Knowing an email is not enough to block or invalidate that user's login.
+  Per-IP limits use the client IP forwarded by the trusted Vite proxy (`X-Forwarded-For`,
+  last entry); clients on the same machine still share one IP. `TRUSTED_PROXY_IPS` must list
+  the real proxy in any other deployment. A distributed attacker with many IPs is not covered.
 - Malformed JSON is remapped from ninja's 400 to 422 by matching ninja's error message
   (`config/urls.py`); re-check after ninja upgrades.
 
 ## Advisory review follow-ups (non-blocking)
 
-- Auth throttle: targeted lockout/DoS (anyone can burn a user's 15-min budget), check-then-act
-  races on lockout and issuance cap, `used_at` reused for revocation, a vacuous/misnamed test
-  in `test_auth.py` (`test_failures_survive_new_code_requests`), constants without rationale.
+- Auth throttle: check-then-act races on the per-IP caps (concurrent requests can slightly
+  exceed them), `used_at` reused for revocation, `LoginEvent` rows are never purged.
 - Frontend: admin role toggles can lose updates on fast clicks, `App` masks backend errors
   on `getMe`, logout failure is silent; login/admin error paths lack tests.
 - Accounts: seed is not atomic; email case handling differs between manager and

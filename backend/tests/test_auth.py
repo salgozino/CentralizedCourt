@@ -5,7 +5,8 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from accounts.models import LOGIN_THROTTLE_WINDOW, MAX_CODES_PER_WINDOW, MAX_FAILED_VERIFICATIONS, LoginCode
+from accounts.models import LOGIN_THROTTLE_WINDOW, LoginCode, LoginEvent
+from accounts.services import MAX_ATTEMPTS_PER_CODE, MAX_CODE_REQUESTS_PER_IP, MAX_FAILED_VERIFICATIONS_PER_IP
 
 LINE_RE = re.compile(r"^LOGIN CODE (\S+) (\d{6})\n$")
 
@@ -122,49 +123,6 @@ def test_one_wrong_attempt_then_correct(client, post_json, request_code, users):
     assert post_json(client, "/api/auth/verify", {**body, "code": code}).status_code == 200
 
 
-def test_lockout_after_max_failures(client, post_json, request_code, users):
-    code = request_code("juror1@example.com")
-    body = {"email": "juror1@example.com"}
-    for _ in range(MAX_FAILED_VERIFICATIONS):
-        assert post_json(client, "/api/auth/verify", {**body, "code": _wrong(code)}).status_code == 401
-    assert post_json(client, "/api/auth/verify", {**body, "code": code}).status_code == 401
-    fresh = request_code("juror1@example.com")
-    assert fresh is None
-    assert post_json(client, "/api/auth/verify", {**body, "code": code}).status_code == 401
-
-
-def test_failures_survive_new_code_requests(client, post_json, request_code, users):
-    body = {"email": "juror1@example.com"}
-    for _ in range(MAX_FAILED_VERIFICATIONS):
-        code = request_code("juror1@example.com")
-        if code is None:
-            break
-        post_json(client, "/api/auth/verify", {**body, "code": _wrong(code)})
-    assert request_code("juror1@example.com") is None
-
-
-def test_lockout_expires(client, post_json, request_code, users):
-    code = request_code("juror1@example.com")
-    body = {"email": "juror1@example.com"}
-    for _ in range(MAX_FAILED_VERIFICATIONS):
-        post_json(client, "/api/auth/verify", {**body, "code": _wrong(code)})
-    LoginCode.objects.update(created_at=timezone.now() - LOGIN_THROTTLE_WINDOW - timedelta(seconds=1))
-    fresh = request_code("juror1@example.com")
-    assert fresh is not None
-    assert post_json(client, "/api/auth/verify", {**body, "code": fresh}).status_code == 200
-
-
-def test_issuance_cap(client, post_json, request_code, capsys, users):
-    for _ in range(MAX_CODES_PER_WINDOW):
-        assert request_code("juror1@example.com") is not None
-    capsys.readouterr()
-    response = post_json(client, "/api/auth/request-code", {"email": "juror1@example.com"})
-    assert response.status_code == 200
-    assert response.json() == {"detail": "If the email exists, a code was sent."}
-    assert "LOGIN CODE" not in capsys.readouterr().out
-    assert LoginCode.objects.filter(user=users["juror1"]).count() == MAX_CODES_PER_WINDOW
-
-
 def test_me_requires_login(client):
     assert client.get("/api/me").status_code == 401
 
@@ -177,3 +135,123 @@ def test_logout(login, users):
 
 def test_logout_without_session(client):
     assert client.post("/api/auth/logout").status_code == 200
+
+
+def test_attacker_cannot_block_victim(post_json, request_code, users):
+    attacker = Client(REMOTE_ADDR="10.0.0.66")
+    victim = Client(REMOTE_ADDR="10.0.0.1")
+    body = {"email": "admin@example.com"}
+    for _ in range(10):
+        request_code("admin@example.com", client=attacker)
+    for _ in range(25):
+        assert post_json(attacker, "/api/auth/verify", {**body, "code": "000000"}).status_code == 401
+    code = request_code("admin@example.com", client=victim)
+    assert code is not None
+    assert post_json(victim, "/api/auth/verify", {**body, "code": code}).status_code == 200
+
+
+def test_victim_code_survives_attacker_requests(post_json, request_code, users):
+    victim = Client(REMOTE_ADDR="10.0.0.1")
+    attacker = Client(REMOTE_ADDR="10.0.0.66")
+    body = {"email": "admin@example.com"}
+    code = request_code("admin@example.com", client=victim)
+    request_code("admin@example.com", client=attacker)
+    assert post_json(victim, "/api/auth/verify", {**body, "code": code}).status_code == 200
+
+
+def test_code_is_bound_to_requesting_session(post_json, request_code, users):
+    session_a, session_b = Client(), Client()
+    code = request_code("juror1@example.com", client=session_a)
+    response = post_json(session_b, "/api/auth/verify", {"email": "juror1@example.com", "code": code})
+    assert response.status_code == 401
+
+
+def test_attempt_cap_per_code(client, post_json, request_code, users):
+    code = request_code("juror1@example.com")
+    body = {"email": "juror1@example.com"}
+    for _ in range(MAX_ATTEMPTS_PER_CODE):
+        assert post_json(client, "/api/auth/verify", {**body, "code": _wrong(code)}).status_code == 401
+    assert post_json(client, "/api/auth/verify", {**body, "code": code}).status_code == 401
+
+
+def test_attacker_guesses_do_not_burn_victim_code(post_json, request_code, users):
+    victim = Client(REMOTE_ADDR="10.0.0.1")
+    attacker = Client(REMOTE_ADDR="10.0.0.66")
+    body = {"email": "admin@example.com"}
+    code = request_code("admin@example.com", client=victim)
+    for _ in range(MAX_ATTEMPTS_PER_CODE + 1):
+        post_json(attacker, "/api/auth/verify", {**body, "code": _wrong(code)})
+    assert LoginCode.objects.get().failed_attempts == 0
+    assert post_json(victim, "/api/auth/verify", {**body, "code": code}).status_code == 200
+
+
+def test_request_cap_per_ip(post_json, request_code, capsys, users):
+    spammer = Client(REMOTE_ADDR="10.0.0.66")
+    for _ in range(MAX_CODE_REQUESTS_PER_IP):
+        assert request_code("juror1@example.com", client=spammer) is not None
+    capsys.readouterr()
+    response = post_json(spammer, "/api/auth/request-code", {"email": "juror1@example.com"})
+    assert response.status_code == 200
+    assert response.json() == {"detail": "If the email exists, a code was sent."}
+    assert "LOGIN CODE" not in capsys.readouterr().out
+    assert request_code("juror1@example.com", client=Client(REMOTE_ADDR="10.0.0.1")) is not None
+
+
+def test_unknown_emails_count_toward_request_cap(post_json, request_code, users):
+    spammer = Client(REMOTE_ADDR="10.0.0.66")
+    for i in range(MAX_CODE_REQUESTS_PER_IP):
+        request_code(f"nobody{i}@example.com", client=spammer)
+    assert request_code("juror1@example.com", client=spammer) is None
+
+
+def test_request_cap_window_expires(post_json, request_code, users):
+    spammer = Client(REMOTE_ADDR="10.0.0.66")
+    for _ in range(MAX_CODE_REQUESTS_PER_IP):
+        request_code("juror1@example.com", client=spammer)
+    LoginEvent.objects.update(created_at=timezone.now() - LOGIN_THROTTLE_WINDOW - timedelta(seconds=1))
+    assert request_code("juror1@example.com", client=spammer) is not None
+
+
+def test_failure_cap_per_ip(post_json, request_code, users):
+    attacker = Client(REMOTE_ADDR="10.0.0.66")
+    body = {"email": "juror1@example.com"}
+    code = request_code("juror1@example.com", client=attacker)
+    for i in range(MAX_FAILED_VERIFICATIONS_PER_IP):
+        post_json(attacker, "/api/auth/verify", {"email": f"nobody{i}@example.com", "code": "000000"})
+    assert post_json(attacker, "/api/auth/verify", {**body, "code": code}).status_code == 401
+    other = Client(REMOTE_ADDR="10.0.0.1")
+    assert post_json(other, "/api/auth/verify", {**body, "code": request_code(body["email"], client=other)}).status_code == 200
+
+
+def _proxied(forwarded_for, remote_addr="127.0.0.1"):
+    return Client(REMOTE_ADDR=remote_addr, HTTP_X_FORWARDED_FOR=forwarded_for)
+
+
+def test_attacker_behind_proxy_cannot_block_victim(post_json, request_code, users):
+    attacker, victim = _proxied("10.0.0.66"), _proxied("10.0.0.1")
+    body = {"email": "admin@example.com"}
+    for _ in range(MAX_CODE_REQUESTS_PER_IP):
+        request_code("admin@example.com", client=attacker)
+    for _ in range(MAX_FAILED_VERIFICATIONS_PER_IP + 5):
+        post_json(attacker, "/api/auth/verify", {**body, "code": "000000"})
+    code = request_code("admin@example.com", client=victim)
+    assert code is not None
+    assert post_json(victim, "/api/auth/verify", {**body, "code": code}).status_code == 200
+
+
+def test_spoofed_forwarded_for_entries_are_ignored(request_code, users):
+    attacker = _proxied("10.0.0.1, 10.0.0.66")
+    for _ in range(MAX_CODE_REQUESTS_PER_IP):
+        request_code("juror1@example.com", client=attacker)
+    assert request_code("juror1@example.com", client=attacker) is None
+    assert set(LoginEvent.objects.values_list("ip", flat=True)) == {"10.0.0.66"}
+    assert request_code("juror1@example.com", client=_proxied("10.0.0.1")) is not None
+
+
+@pytest.mark.parametrize(
+    ("remote_addr", "forwarded_for", "expected"),
+    [("10.0.0.5", "10.0.0.1", "10.0.0.5"), ("127.0.0.1", "10.0.0.1, garbage", "127.0.0.1")],
+)
+def test_forwarded_for_not_trusted(request_code, users, remote_addr, forwarded_for, expected):
+    request_code("juror1@example.com", client=_proxied(forwarded_for, remote_addr))
+    assert set(LoginEvent.objects.values_list("ip", flat=True)) == {expected}

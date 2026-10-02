@@ -8,8 +8,6 @@ EXTRA_ROLES = ("creator", "juror")
 ALL_ROLES = ("admin", *EXTRA_ROLES, "user")
 CODE_TTL = timedelta(minutes=10)
 LOGIN_THROTTLE_WINDOW = timedelta(minutes=15)
-MAX_FAILED_VERIFICATIONS = 10
-MAX_CODES_PER_WINDOW = 5
 
 
 class UserManager(BaseUserManager):
@@ -73,3 +71,17 @@ class LoginCode(models.Model):
     expires_at = models.DateTimeField()
     used_at = models.DateTimeField(null=True, blank=True)
     failed_attempts = models.PositiveSmallIntegerField(default=0)
+
+
+class LoginEvent(models.Model):
+    """Per-IP record of code requests and failed verifications, used for throttling."""
+
+    REQUEST = "request"
+    FAILURE = "failure"
+
+    ip = models.GenericIPAddressField()
+    kind = models.CharField(max_length=10, choices=[(REQUEST, "Request"), (FAILURE, "Failure")])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["ip", "kind", "created_at"])]

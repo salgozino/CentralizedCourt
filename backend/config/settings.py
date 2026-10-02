@@ -131,3 +131,6 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CSRF_TRUSTED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+# Proxies whose X-Forwarded-For is trusted for per-IP login throttling (Vite dev proxy).
+TRUSTED_PROXY_IPS = ["127.0.0.1", "::1"]
