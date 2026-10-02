@@ -23,4 +23,4 @@ Bugs found after a criterion was marked as passed.
 | Date | Criterion # | Description | Found by | Fix commit |
 | ---- | ----------- | ----------- | -------- | ---------- |
 | 2026-10-02 | 1 (admin-only roles) | `PUT /api/admin/users/{id}/roles` validated the body before checking admin, so a non-admin got `422` with role-specific messages instead of `403` and could enumerate roles. | Human review | `dfbd1e6` |
-| 2026-10-02 | 1 (login with code) | The 5-attempt limit was per code, but `request-code` could be called without limit, giving unlimited guesses (brute force of the 6-digit code). Fixed with a per-user lockout across codes. | Human review | `fe02c38` |
+| 2026-10-02 | 1 (login with code) | The 5-attempt limit was per code, but `request-code` could be called without limit, giving unlimited guesses (brute force of the 6-digit code). First fix (`fe02c38`, per-account lockout) let anyone lock out another user; replaced by per-IP throttling. | Human review | `fe02c38`, `340a9bf` |
