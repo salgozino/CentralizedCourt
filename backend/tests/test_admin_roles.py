@@ -141,3 +141,53 @@ def test_put_roles_requires_csrf_token(login_as):
         headers={"X-CSRFToken": token},
     )
     assert response.status_code == 200
+
+
+# Bodies used to probe the roles endpoint: valid, unknown, admin, wrong shapes.
+PROBE_BODIES = [
+    {"roles": ["creator"]},
+    {"roles": ["user"]},
+    {"roles": ["admin"]},
+    {"roles": ["superuser"]},
+    {"roles": ["creator", "admin"]},
+    {"roles": "creator"},
+    {"roles": None},
+    {},
+]
+
+
+def probe(client, target_id):
+    return [
+        client.put(
+            f"/api/admin/users/{target_id}/roles", body, content_type="application/json"
+        )
+        for body in PROBE_BODIES
+    ]
+
+
+@pytest.mark.parametrize("email", ["user@example.com", "creator1@example.com"])
+def test_non_admin_cannot_probe_roles(login_as, client, email):
+    """Every body, valid or not, gives the same 403 so roles cannot be enumerated."""
+    login_as(email)
+    for target_id in (user_id("juror1@example.com"), 999_999):
+        responses = probe(client, target_id)
+        assert {r.status_code for r in responses} == {403}
+        assert len({r.content for r in responses}) == 1
+    assert User.objects.get(email="juror1@example.com").roles == ["juror", "user"]
+
+
+def test_anonymous_cannot_probe_roles(seeded, client):
+    responses = probe(client, user_id("juror1@example.com"))
+    assert {r.status_code for r in responses} == {401}
+    assert len({r.content for r in responses}) == 1
+
+
+def test_invalid_roles_error_does_not_reveal_which_roles_exist(login_as, client):
+    login_as("admin@example.com")
+    target = user_id("user@example.com")
+    responses = [
+        put_roles(client, target, roles)
+        for roles in (["admin"], ["superuser"], ["Juror"], ["creator", "admin"], ["moderator"])
+    ]
+    assert {r.status_code for r in responses} == {422}
+    assert len({r.content for r in responses}) == 1

@@ -11,7 +11,7 @@ be able to resume from here.
     command (`make seed`), endpoints `/api/auth/*`, `/api/me`, `/api/admin/users*`.
   - Frontend: login screen (email → code), home with role sections, admin users
     table with creator/juror checkboxes, logout. Session cookie + CSRF header.
-  - Tests: 51 backend (pytest), 11 frontend (vitest + Testing Library + jsdom).
+  - Tests: 55 backend (pytest), 11 frontend (vitest + Testing Library + jsdom).
 - Local DB was recreated for the custom user model (old one kept as
   `backend/db.sqlite3.bak`, gitignored, can be deleted).
 
@@ -26,7 +26,10 @@ be able to resume from here.
 - Requesting a new code invalidates the user's previous unused codes.
 - A code is burned after 5 wrong attempts (brute-force protection).
 - `request-code` returns `422` for a malformed email (not just missing/wrong type).
-- `PUT .../roles` accepts `"user"` in the list as a no-op; `"admin"` or unknown roles → `422`.
+- `PUT .../roles` accepts `"user"` in the list as a no-op; `"admin"` or unknown roles → `422`
+  with one generic message, so errors do not reveal which roles exist.
+- Admin endpoints check the admin role in the auth step (before body validation): a
+  non-admin always gets the same `403`, whatever the body or user id.
 - Seed only creates missing users; it never resets roles of existing ones.
 - Mutating endpoints that require a session enforce CSRF (`X-CSRFToken`);
   `GET /api/auth/csrf` sets the cookie.

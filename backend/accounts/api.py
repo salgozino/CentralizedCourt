@@ -1,11 +1,11 @@
 from django.contrib.auth import login, logout
 from django.middleware.csrf import get_token
 from ninja import Router, Schema
-from ninja.errors import HttpError
-from ninja.security import django_auth
+from ninja.errors import AuthorizationError, HttpError
+from ninja.security import SessionAuth, django_auth
 from pydantic import field_validator
 
-from .models import ASSIGNABLE_ROLES, ROLE_ADMIN, ROLE_USER, User
+from .models import ASSIGNABLE_ROLES, ROLE_USER, User
 from .services import request_login_code, verify_login_code
 
 
@@ -39,11 +39,10 @@ class RolesIn(Schema):
     @field_validator("roles")
     @classmethod
     def only_assignable_roles(cls, roles: list[str]) -> list[str]:
-        for role in roles:
-            if role == ROLE_ADMIN:
-                raise ValueError("The admin role cannot be set or removed")
-            if role != ROLE_USER and role not in ASSIGNABLE_ROLES:
-                raise ValueError(f"Invalid role: {role}")
+        # One generic message for every invalid value (unknown role, `admin`, ...)
+        # so the error does not reveal which roles exist.
+        if any(role != ROLE_USER and role not in ASSIGNABLE_ROLES for role in roles):
+            raise ValueError(f"roles must be a subset of {list(ASSIGNABLE_ROLES)}")
         return roles
 
 
@@ -55,9 +54,18 @@ def user_out(user: User) -> dict:
     return {"id": user.id, "email": user.email, "roles": user.roles}
 
 
-def require_admin(request) -> None:
-    if not request.user.is_admin:
-        raise HttpError(403, "Admin role required")
+class AdminSessionAuth(SessionAuth):
+    """Session auth that also requires the admin role.
+
+    Runs before the request body is parsed, so a non-admin always gets the same
+    `403` regardless of the body and cannot probe validation errors.
+    """
+
+    def authenticate(self, request, key):
+        user = super().authenticate(request, key)
+        if user is not None and not user.is_admin:
+            raise AuthorizationError(message="Admin role required")
+        return user
 
 
 auth_router = Router(tags=["auth"])
@@ -99,18 +107,16 @@ def me(request):
     return user_out(request.user)
 
 
-admin_router = Router(tags=["admin"], auth=django_auth)
+admin_router = Router(tags=["admin"], auth=AdminSessionAuth())
 
 
 @admin_router.get("/users", response=list[UserOut])
 def list_users(request):
-    require_admin(request)
     return [user_out(user) for user in User.objects.order_by("id")]
 
 
 @admin_router.put("/users/{user_id}/roles", response=UserOut)
 def set_user_roles(request, user_id: int, payload: RolesIn):
-    require_admin(request)
     user = User.objects.filter(id=user_id).first()
     if user is None:
         raise HttpError(404, "User not found")
