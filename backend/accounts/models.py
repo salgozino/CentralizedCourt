@@ -25,6 +25,9 @@ class User(AbstractUser):
     is_creator = models.BooleanField(default=False)
     is_juror = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
+    # Account-wide budget: issuing another LoginCode must not reset it.
+    verification_attempts = models.PositiveSmallIntegerField(default=0)
+    verification_window_ends_at = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

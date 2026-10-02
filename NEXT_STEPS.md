@@ -6,7 +6,10 @@
   idempotent seed, console code login, Django sessions, logout and admin role API.
 - React UI includes login, role-specific home sections and admin role editing.
   CSRF is enforced; profile refresh/refocus shows role changes from other sessions.
-- `make test`: 38 backend + 17 frontend tests pass. `make build`, `make lint` and
+- Verification is limited to five attempts per account per ten-minute window,
+  persisted in SQLite with atomic slot reservation. Reissuing codes cannot reset
+  the budget. Migration `accounts.0002` applied locally; run `make migrate` elsewhere.
+- `make test`: 44 backend + 17 frontend tests pass. `make build`, `make lint` and
   `make e2e` pass. Browser E2E uses real console codes for all nine users and a
   temporary SQLite database. See `README.md` for run/test instructions.
 - Custom user is in the initial accounts migration. The old empty scaffold
@@ -23,6 +26,7 @@
 ## Open questions / limitations
 
 - Tie-breaking rule when votes are split (needed before slice 4).
-- Local-only login deliberately prints codes; no production rate limiting or
-  private delivery service. Deployment hardening is outside the current scope.
+- Local-only login deliberately prints codes. Per-account verification is bounded;
+  IP/global abuse controls, request-code throttling and private delivery remain
+  deployment-hardening work outside this fix.
 - Build passes with a large UI-library chunk warning; optimize if needed later.

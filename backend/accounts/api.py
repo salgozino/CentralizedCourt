@@ -5,6 +5,7 @@ from django.contrib.auth import login, logout
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
+from django.db.models import F, Q
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -17,6 +18,9 @@ from pydantic import field_validator
 from .models import LoginCode, User
 
 api = NinjaAPI(title="CentralizedCourt")
+
+VERIFY_ATTEMPT_LIMIT = 5
+VERIFY_WINDOW = timedelta(minutes=10)
 
 
 class EmailInput(Schema):
@@ -82,14 +86,32 @@ def request_code(request, payload: EmailInput):
 @api.post("/auth/verify", response=Profile)
 @decorate_view(csrf_protect)
 def verify(request, payload: VerifyInput):
+    now = timezone.now()
+    authenticated = False
     with transaction.atomic():
-        user = User.objects.filter(email=payload.email, is_active=True).first()
-        if not user or not LoginCode.objects.filter(
-            user=user, digest=code_digest(payload.email, payload.code),
-            used=False, expires_at__gt=timezone.now(),
-        ).update(used=True):
-            raise HttpError(401, "Invalid or expired code")
-        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        account = User.objects.filter(email=payload.email, is_active=True)
+        # Write first: SQLite serializes competing writers, avoiding a read/write
+        # lock upgrade. A conditional increment reserves a slot across workers.
+        account.filter(
+            Q(verification_window_ends_at__isnull=True)
+            | Q(verification_window_ends_at__lte=now)
+        ).update(verification_attempts=0, verification_window_ends_at=now + VERIFY_WINDOW)
+        allowed = account.filter(
+            verification_attempts__lt=VERIFY_ATTEMPT_LIMIT,
+            verification_window_ends_at__gt=now,
+        ).update(verification_attempts=F("verification_attempts") + 1)
+        if allowed:
+            user = account.get()
+            authenticated = bool(LoginCode.objects.filter(
+                user=user, digest=code_digest(payload.email, payload.code),
+                used=False, expires_at__gt=now,
+            ).update(used=True))
+            if authenticated:
+                login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    # Raise AFTER commit: invalid codes must not roll back the attempt counter.
+    # Unknown accounts, wrong codes and exhausted budgets have the same response.
+    if not authenticated:
+        raise HttpError(401, "Invalid or expired code")
     return user
 
 

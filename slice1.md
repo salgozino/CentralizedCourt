@@ -41,6 +41,11 @@ Passwordless, email + one-time code, no external services.
    cookie).
 3. A code is single-use and expires after 10 minutes. A code is only valid for the
    email it was issued to.
+4. Verification is limited to five attempts per account per ten-minute window,
+   beginning with the first attempt. Attempts (successful or not) share a persistent
+   budget across clients/workers. Issuing another code does not reset it. Exhausted
+   budgets return the same generic `401` as invalid codes; retries do not extend
+   the window. This closes the unlimited-attempts defect found during validation.
 
 ## API contract
 

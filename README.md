@@ -37,6 +37,15 @@ invalidates the previous one. Only existing accounts can log in. Unknown emails
 receive the same API response but no console code. Codes are stored as keyed
 hashes; login creates a Django session cookie.
 
+Verification allows at most **five attempts per account per ten-minute window**,
+starting with the first attempt. Every verification (including a successful one)
+uses a slot. The budget is stored in SQLite and reserved atomically across workers;
+changing sessions, restarting the server, or requesting another code does not
+reset it. After five attempts, even a correct code is denied until the window ends.
+Blocked attempts do not extend the window. Denials use the same generic `401` as
+invalid codes/unknown emails. Wait for the window to end and request a fresh code
+if the previous one expired.
+
 The admin screen can assign/remove creator and juror roles. It cannot alter the
 admin role. Users can hold multiple roles. Use **Refresh profile**, reload, or
 refocus the user's tab to see permissions changed in another session. Backend
@@ -75,7 +84,8 @@ the cookie after login because Django rotates it. CSRF protection applies to
 login/logout and authenticated role changes.
 
 This is a local demo, not an internet-facing authentication service. Console codes
-are intentional. Production deployment would additionally require login/request
-rate limiting, delivery of codes over a private channel, HTTPS/cookie and host
+are intentional. The account verification budget prevents unlimited code guessing,
+but production deployment would additionally require IP/global abuse controls,
+request-code rate limiting, delivery of codes over a private channel, HTTPS/cookie and host
 configuration, operational logging and deployment hardening. Vite currently warns
 about a >500 kB chunk from the UI-library dependency; the production build passes.

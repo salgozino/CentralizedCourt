@@ -109,6 +109,25 @@ try {
   await user.getByRole('heading', { name: 'No permissions yet', exact: true }).waitFor();
   assert.deepEqual(errors, []);
   console.log('PASS admin grants/removes both roles; existing user session and UI reflect changes');
+  await user.getByRole('button', { name: 'Logout', exact: true }).click();
+  await user.getByRole('heading', { name: 'Sign in', exact: true }).waitFor();
+  const csrf = (await userContext.cookies()).find((cookie) => cookie.name === 'csrftoken').value;
+  const post = (path, data) => userContext.request.post(`${origin}/api/auth/${path}`, {
+    data, headers: { 'X-CSRFToken': csrf },
+  });
+  // Concurrent HTTP requests exercise SQLite's cross-connection budget updates.
+  const attempts = await Promise.all(Array.from({ length: 20 }, () =>
+    post('verify', { email: 'user@example.com', code: 'wrong' })));
+  assert.ok(attempts.every((response) => response.status() === 401));
+  for (let retry = 0; retry < 2; retry++) {
+    const logStart = backendLog.length;
+    assert.equal((await post('request-code', { email: 'user@example.com' })).status(), 200);
+    const code = backendLog.slice(logStart).match(/LOGIN CODE user@example\.com (\d{6})/)?.[1];
+    assert.ok(code);
+    assert.equal((await post('verify', { email: 'user@example.com', code })).status(), 401);
+  }
+  assert.equal((await userContext.request.get(`${origin}/api/me`)).status(), 401);
+  console.log('PASS concurrent verification attempts exhaust persistent budget; reissue cannot bypass it');
   console.log('PASS slice1 browser E2E (real backend, console codes, session cookies and CSRF)');
 } finally {
   await browser?.close();
