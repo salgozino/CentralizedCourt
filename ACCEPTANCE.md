@@ -6,7 +6,7 @@ screenshot path or commit) when it passes.
 | #   | Slice                     | Acceptance criterion                                                                              | Status | Evidence |
 | --- | ------------------------- | ------------------------------------------------------------------------------------------------- | ------ | -------- |
 | 1   | Login + roles             | A seeded user logs in with the console-printed code and sees a screen matching their roles.       | ✅     | `backend/tests/test_auth.py::test_seeded_users_log_in_with_their_roles`, `frontend/src/App.test.tsx` ("sections per role"); manual curl run through the Vite proxy. Commit `6538c02` |
-| 1   | Login + roles             | Only an admin can assign creator/juror roles; enforced by the backend (non-admin gets 403).       | ✅     | `backend/tests/test_admin_roles.py::test_non_admin_gets_403`, `::test_admin_grants_creator_and_juror`. Commit `a1e55cc` |
+| 1   | Login + roles             | Only an admin can assign creator/juror roles; enforced by the backend (non-admin gets 403).       | ✅     | `backend/tests/test_admin_roles.py::test_non_admin_gets_403`, `::test_admin_grants_creator_and_juror`. Commit `eef911c` |
 | 2   | Create case               | A case creator opens a case with description, outcomes and deadline; it appears in the case list. | ⬜     |          |
 | 2   | Create case               | A user without the creator role cannot create cases (backend returns 403).                        | ⬜     |          |
 | 3   | Draw jurors               | With a fixed seed, drawing 3 jurors always returns the same 3 users with the juror role.          | ⬜     |          |
