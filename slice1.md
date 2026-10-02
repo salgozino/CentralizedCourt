@@ -74,13 +74,25 @@ All endpoints under `/api/`. Authentication is the Django session cookie.
 
 ## Acceptance
 
-- [ ] Each seeded user logs in with the console-printed code and sees the sections
+- [x] Each seeded user logs in with the console-printed code and sees the sections
       matching their roles.
-- [ ] Wrong, reused, expired or foreign codes are rejected; unknown emails cannot log in.
-- [ ] A non-admin calling the admin endpoints gets `403`.
-- [ ] The admin gives `user@example.com` the `creator` and `juror` roles; after
+- [x] Wrong, reused, expired or foreign codes are rejected; unknown emails cannot log in.
+- [x] A non-admin calling the admin endpoints gets `403`.
+- [x] The admin gives `user@example.com` the `creator` and `juror` roles; after
       that `/api/me` for that user returns `["creator", "juror", "user"]` and the UI
       shows both sections.
-- [ ] Custom `AUTH_USER_MODEL` defined before the first migration.
-- [ ] Backend tests cover the contract above; `make test` passes.
+- [x] Custom `AUTH_USER_MODEL` defined before the first migration.
+- [x] Backend tests cover the contract above; `make test` passes.
 - [ ] Your work will also be checked by additional tests against this contract.
+
+### Evidence (2026-10-02)
+
+- `make test`: contract/security coverage in `backend/tests/test_accounts.py`;
+  UI interaction/role coverage in `frontend/src/App.test.tsx` and CSRF client
+  coverage in `frontend/src/api.test.ts`.
+- `make e2e`: `frontend/e2e/slice1.mjs` logs in all nine users using actual console
+  codes, checks role sections, session persistence and logout, and grants/removes
+  both roles across two independent browser sessions against a real Django server.
+- `backend/accounts/migrations/0001_initial.py`: custom user created from the first
+  accounts migration; fresh database migration verified.
+- `make build` and `make lint` pass. External/additional tests remain pending.

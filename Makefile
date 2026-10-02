@@ -1,7 +1,7 @@
 VENV := backend/.venv
 PY := $(VENV)/bin/python
 
-.PHONY: setup dev-backend dev-frontend test migrate
+.PHONY: setup dev-backend dev-frontend test migrate build lint seed e2e
 
 setup:
 	python3 -m venv $(VENV)
@@ -20,3 +20,15 @@ test:
 
 migrate:
 	cd backend && .venv/bin/python manage.py migrate
+
+seed:
+	cd backend && .venv/bin/python manage.py seed
+
+build:
+	cd frontend && yarn build
+
+lint:
+	cd frontend && yarn lint
+
+e2e:
+	cd frontend && yarn e2e

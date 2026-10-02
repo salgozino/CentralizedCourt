@@ -5,8 +5,8 @@ screenshot path or commit) when it passes.
 
 | #   | Slice                     | Acceptance criterion                                                                              | Status | Evidence |
 | --- | ------------------------- | ------------------------------------------------------------------------------------------------- | ------ | -------- |
-| 1   | Login + roles             | A seeded user logs in with the console-printed code and sees a screen matching their roles.       | ⬜     |          |
-| 1   | Login + roles             | Only an admin can assign creator/juror roles; enforced by the backend (non-admin gets 403).       | ⬜     |          |
+| 1   | Login + roles             | A seeded user logs in with the console-printed code and sees a screen matching their roles.       | ✅     | `make e2e`: all 9 seeded accounts; `test_each_seeded_user_logs_in_with_console_code`; `App.test.tsx` |
+| 1   | Login + roles             | Only an admin can assign creator/juror roles; enforced by the backend (non-admin gets 403).       | ✅     | `test_non_admin_denied`, `test_admin_assigns_removes_and_preserves_admin`; `make e2e`: cross-session grant/remove |
 | 2   | Create case               | A case creator opens a case with description, outcomes and deadline; it appears in the case list. | ⬜     |          |
 | 2   | Create case               | A user without the creator role cannot create cases (backend returns 403).                        | ⬜     |          |
 | 3   | Draw jurors               | With a fixed seed, drawing 3 jurors always returns the same 3 users with the juror role.          | ⬜     |          |

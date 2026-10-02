@@ -1,21 +1,28 @@
 # Next Steps
 
-Update at the end of each session. Keep it short: someone (or a fresh agent) should
-be able to resume from here.
-
 ## Current state
 
-- Project brief, acceptance list and logs created.
-- Scaffold done: Django + django-ninja backend (empty API) and Vite + React 18 +
-  Tailwind v4 + kleros-ui frontend. Both start locally and `make test` runs one dummy
-  test per side. No domain code yet.
-- Agent instructions in `AGENTS.md` (how to set up, run and test the app).
+- Slice 1 implemented on `feat/slice1/gpt`: custom email user, nine-account
+  idempotent seed, console code login, Django sessions, logout and admin role API.
+- React UI includes login, role-specific home sections and admin role editing.
+  CSRF is enforced; profile refresh/refocus shows role changes from other sessions.
+- `make test`: 38 backend + 17 frontend tests pass. `make build`, `make lint` and
+  `make e2e` pass. Browser E2E uses real console codes for all nine users and a
+  temporary SQLite database. See `README.md` for run/test instructions.
+- Custom user is in the initial accounts migration. The old empty scaffold
+  database was backed up outside the repository; the new local DB is migrated
+  and seeded. No .env changes.
+- `RUN_LOG.md` and `usage/` record the session baseline and final usage delta.
 
 ## Next
 
-1. Start slice 1: login + roles (spec in `slice1.md`). Define a custom `AUTH_USER_MODEL`
-   before the first migration.
+1. Human review and additional contract tests for slice 1.
+2. Slice 2: create a case and list cases; enforce creator permission in backend.
+   Do not implement jury draw or voting yet.
 
-## Open questions / decisions pending
+## Open questions / limitations
 
 - Tie-breaking rule when votes are split (needed before slice 4).
+- Local-only login deliberately prints codes; no production rate limiting or
+  private delivery service. Deployment hardening is outside the current scope.
+- Build passes with a large UI-library chunk warning; optimize if needed later.

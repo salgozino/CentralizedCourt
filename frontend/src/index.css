@@ -1,3 +1,26 @@
 @import "tailwindcss";
 @import "../node_modules/@kleros/ui-components-library/dist/assets/theme.css";
 @source "../node_modules/@kleros/ui-components-library";
+
+body { margin: 0; background: #f5f3fa; color: #242033; font-family: system-ui, sans-serif; }
+main { max-width: 1080px; margin: 0 auto; padding: 2.5rem 1rem; }
+h1 { font-size: 2.25rem; font-weight: 750; margin-bottom: 1.5rem; }
+h2 { font-size: 1.25rem; font-weight: 650; overflow-wrap: anywhere; }
+p { margin: .5rem 0 1rem; }
+.eyebrow { color: #655089; text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; }
+.panel { background: white; border: 1px solid #ddd6e8; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; }
+.login { max-width: 480px; }
+.login form { display: flex; flex-direction: column; gap: .8rem; }
+input:not([type=checkbox]) { border: 1px solid #857793; padding: .7rem; border-radius: 6px; background: white; color: #242033; }
+input[type=checkbox] { accent-color: #7040a0; width: 1rem; height: 1rem; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .65; }
+button:not([class]) { text-decoration: underline; color: #62358d; }
+:focus-visible { outline: 3px solid #9b73ce; outline-offset: 3px; }
+.profile, .role-row { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.profile > div, .role-row > div { flex: 1; min-width: 200px; }
+.role-row { border-top: 1px solid #e6e0ed; padding: 1rem 0; }
+.role-row strong { overflow-wrap: anywhere; }
+.role-row label { display: flex; align-items: center; gap: .4rem; }
+[role=alert] { color: #9b1b35; }
+[role=status] { color: #4c4461; }
