@@ -32,6 +32,14 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'false').lower() == 'true'
 
 ALLOWED_HOSTS = []
 
+# Reverse proxies (the Vite dev server) allowed to report the client IP in
+# X-Forwarded-For. Only the last entry, the one the proxy appended, is used.
+TRUSTED_PROXIES = [
+    ip.strip()
+    for ip in os.environ.get('DJANGO_TRUSTED_PROXIES', '127.0.0.1,::1').split(',')
+    if ip.strip()
+]
+
 
 # Application definition
 

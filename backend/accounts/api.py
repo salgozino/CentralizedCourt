@@ -1,3 +1,6 @@
+import ipaddress
+
+from django.conf import settings
 from django.contrib.auth import login, logout
 from django.middleware.csrf import get_token
 from ninja import Router, Schema
@@ -55,9 +58,21 @@ def user_out(user: User) -> dict:
 
 
 def client_ip(request) -> str:
-    # REMOTE_ADDR only: X-Forwarded-For is client-controlled unless set by a
-    # trusted proxy, and would let an attacker pick a fresh IP per request.
-    return request.META.get("REMOTE_ADDR") or "0.0.0.0"
+    """IP of the client, used to rate-limit login.
+
+    X-Forwarded-For is only trusted when the request comes from a trusted proxy,
+    and only its last entry is used: that one is appended by the proxy, while
+    anything to its left is client-controlled and could be rotated freely.
+    """
+    remote = request.META.get("REMOTE_ADDR") or "0.0.0.0"
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if remote not in settings.TRUSTED_PROXIES or not forwarded:
+        return remote
+    last = forwarded.split(",")[-1].strip()
+    try:
+        return str(ipaddress.ip_address(last))
+    except ValueError:
+        return remote
 
 
 class AdminSessionAuth(SessionAuth):

@@ -7,7 +7,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      "/api": "http://localhost:8000",
+      // xfwd appends the real client IP to X-Forwarded-For; the backend rate-limits
+      // login per client IP and would otherwise see every request as 127.0.0.1.
+      "/api": { target: "http://localhost:8000", xfwd: true },
     },
   },
   test: {

@@ -11,7 +11,7 @@ be able to resume from here.
     command (`make seed`), endpoints `/api/auth/*`, `/api/me`, `/api/admin/users*`.
   - Frontend: login screen (email → code), home with role sections, admin users
     table with creator/juror checkboxes, logout. Session cookie + CSRF header.
-  - Tests: 63 backend (pytest), 11 frontend (vitest + Testing Library + jsdom).
+  - Tests: 67 backend (pytest), 11 frontend (vitest + Testing Library + jsdom).
 - Local DB was recreated for the custom user model (old one kept as
   `backend/db.sqlite3.bak`, gitignored, can be deleted).
 
@@ -28,10 +28,15 @@ be able to resume from here.
 - Brute-force protection is per client IP, never per account (an attacker must not be
   able to lock another user out): 10 failed verifies or 20 code requests per IP in
   15 min throttle that IP (verify → `401` without touching any code; request-code →
-  same `200`, no code, prints `LOGIN THROTTLED <ip>`). Uses `REMOTE_ADDR` only
-  (`X-Forwarded-For` is spoofable). Residual risks: a distributed attacker (many IPs)
-  is not bounded; users behind the same IP share the limit (locally everyone is
-  `127.0.0.1`); anyone can still invalidate a user's pending code by requesting a new
+  same `200`, no code, prints `LOGIN THROTTLED <ip>`).
+- Client IP: the Vite proxy forwards with `xfwd: true`; the backend trusts
+  `X-Forwarded-For` only from `TRUSTED_PROXIES` (env `DJANGO_TRUSTED_PROXIES`, default
+  `127.0.0.1,::1`) and uses only its last entry (the one the proxy appended). Without
+  this every request through the proxy is `127.0.0.1` and the limit becomes global.
+  In production the proxy in front of Django must append the header the same way and
+  Django must not be reachable directly (a local process hitting :8000 can forge it).
+- Residual risks: a distributed attacker (many IPs) is not bounded; users behind the
+  same IP share the limit (in a local demo every browser is `127.0.0.1`); anyone can still invalidate a user's pending code by requesting a new
   one or burn it with 5 wrong guesses (the user just requests another). Fixing the
   last one means binding codes to the requesting session, which changes the contract.
 - Seed only creates missing users; it never resets roles of existing ones.

@@ -142,3 +142,41 @@ def test_failures_below_the_limit_do_not_throttle(seeded, attacker, capsys):
         verify(attacker, VICTIM, wrong(code))
     code = request_code(attacker, VICTIM, capsys)
     assert verify(attacker, VICTIM, code).status_code == 200
+
+
+PROXY = "127.0.0.1"
+
+
+def via_proxy(forwarded_for):
+    return Client(REMOTE_ADDR=PROXY, HTTP_X_FORWARDED_FOR=forwarded_for)
+
+
+def test_clients_behind_the_proxy_are_throttled_separately(seeded, capsys):
+    attacker = via_proxy("203.0.113.66")
+    exhaust_failures(attacker, capsys)
+    victim = via_proxy("198.51.100.7")
+    code = request_code(victim, VICTIM, capsys)
+    assert verify(victim, VICTIM, code).status_code == 200
+
+
+def test_forged_forwarded_entries_cannot_rotate_the_ip(seeded, capsys):
+    # The client controls everything left of the entry the proxy appends.
+    for i in range(MAX_FAILED_VERIFIES_PER_IP):
+        verify(via_proxy(f"10.0.0.{i}, 203.0.113.66"), VICTIM, "000000")
+    attacker = via_proxy("10.9.9.9, 203.0.113.66")
+    assert verify(attacker, VICTIM, plant_valid_code()).status_code == 401
+
+
+def test_forwarded_header_from_untrusted_client_is_ignored(seeded):
+    for i in range(MAX_FAILED_VERIFIES_PER_IP):
+        Client(REMOTE_ADDR="203.0.113.66", HTTP_X_FORWARDED_FOR=f"10.0.0.{i}").post(
+            "/api/auth/verify", {"email": VICTIM, "code": "000000"}, content_type="application/json"
+        )
+    attacker = Client(REMOTE_ADDR="203.0.113.66", HTTP_X_FORWARDED_FOR="10.9.9.9")
+    assert verify(attacker, VICTIM, plant_valid_code()).status_code == 401
+
+
+def test_garbage_forwarded_header_falls_back_to_remote_addr(seeded):
+    response = verify(via_proxy("not-an-ip"), VICTIM, "000000")
+    assert response.status_code == 401
+    assert LoginThrottleEvent.objects.get().ip == PROXY
