@@ -22,11 +22,15 @@ Always use the root `Makefile` targets, run from the repository root:
 | ------------------- | ---------------------------------------------------- |
 | `make setup`        | Creates `backend/.venv`, installs Python and JS deps |
 | `make migrate`      | Applies Django migrations to the SQLite database     |
+| `make seed`         | Creates the seeded users (idempotent)                |
 | `make dev-backend`  | Starts Django on http://localhost:8000               |
 | `make dev-frontend` | Starts Vite on http://localhost:5173                 |
 | `make test`         | Runs backend tests (pytest), then frontend (vitest)  |
 
-First run: `make setup`, then `make migrate`.
+First run: `make setup`, then `make migrate`, then `make seed`.
+
+Login is passwordless: request a code in the UI and read the
+`LOGIN CODE <email> <code>` line from the `make dev-backend` output.
 
 - `dev-backend` and `dev-frontend` are long-running servers: start them in the
   background and stop them when done.

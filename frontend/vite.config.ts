@@ -10,4 +10,9 @@ export default defineConfig({
       "/api": "http://localhost:8000",
     },
   },
+  test: {
+    environment: "jsdom",
+    // The UI library imports its own CSS files, which only Vite can process.
+    server: { deps: { inline: ["@kleros/ui-components-library"] } },
+  },
 });
