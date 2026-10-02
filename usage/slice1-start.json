@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-10-02T14:20:31.585814+00:00",
+  "session_id": "01a0fcfa-e250-71c2-89dc-5c2cec195d48",
+  "model": "gpt-6-astra",
+  "starting_commit": "0b1216a2174f1abf183dd9c2c3a796f5314ffea0",
+  "assistant_messages": 9,
+  "last_usage_timestamp": "2026-10-02T14:20:31.543Z",
+  "tokens": {
+    "input": 22674,
+    "output": 2059,
+    "cacheRead": 43008,
+    "cacheWrite": 0,
+    "reasoning": 106,
+    "totalTokens": 67741
+  },
+  "cost_usd_reported_by_harness": {
+    "input": 0.22674000000000002,
+    "output": 0.10295,
+    "cacheRead": 0.043008,
+    "cacheWrite": 0,
+    "total": 0.37269800000000003
+  },
+  "scope": "Cumulative session usage available before development; not provider quota. Current in-flight response is not included."
+}
