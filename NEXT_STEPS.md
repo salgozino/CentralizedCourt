@@ -11,7 +11,7 @@ be able to resume from here.
     command (`make seed`), endpoints `/api/auth/*`, `/api/me`, `/api/admin/users*`.
   - Frontend: login screen (email → code), home with role sections, admin users
     table with creator/juror checkboxes, logout. Session cookie + CSRF header.
-  - Tests: 55 backend (pytest), 11 frontend (vitest + Testing Library + jsdom).
+  - Tests: 61 backend (pytest), 11 frontend (vitest + Testing Library + jsdom).
 - Local DB was recreated for the custom user model (old one kept as
   `backend/db.sqlite3.bak`, gitignored, can be deleted).
 
@@ -24,7 +24,11 @@ be able to resume from here.
 ## Decisions taken in slice 1 (review)
 
 - Requesting a new code invalidates the user's previous unused codes.
-- A code is burned after 5 wrong attempts (brute-force protection).
+- A code is burned after 5 wrong attempts.
+- Per-user lockout: 10 wrong guesses across all codes created in the last 15 min
+  lock the user out (verify refuses even the right code; request-code issues nothing,
+  same generic response, prints `LOGIN LOCKED <email>`). Trade-off: an attacker can
+  keep a known email locked out (DoS); acceptable for a local demo. No per-IP limit.
 - `request-code` returns `422` for a malformed email (not just missing/wrong type).
 - `PUT .../roles` accepts `"user"` in the list as a no-op; `"admin"` or unknown roles → `422`
   with one generic message, so errors do not reveal which roles exist.
