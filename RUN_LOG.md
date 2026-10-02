@@ -52,3 +52,13 @@ Quota: copy the usage/cost shown by the harness when the task ends.
 - Result: all implemented slice1 acceptance checks pass; human review/additional external tests pending.
 - Start-log commit: ff663e6.
 - Implementation/end commit: 672fc0b1be0adbf4d1dee6c01d27f3098654f16a. Final log and snapshots are committed separately.
+
+### T2 — Escaped defect: unlimited verification attempts
+- Starting commit: f3353d0c19f1605e3f8b458a0e1e819dfdd6e150
+- Session ID: 01a0fcfa-e250-71c2-89dc-5c2cec195d48
+- Model / harness: gpt-6-astra / pi
+- Start: 2026-10-02T16:17:22.330735+00:00 (baseline `make test` passed)
+- Usage baseline: `usage/verify-limit-start.json`; harness-reported usage, not provider quota.
+- Human intervention: user reported missing verify attempt limit after slice1 validation.
+- Plan: persistent per-account budget, five verification attempts per ten-minute window; reissuing codes cannot reset the budget; atomic database updates; generic 401 on denial.
+- End / checks / usage delta: pending.
