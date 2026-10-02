@@ -8,7 +8,8 @@ Quota: copy the usage/cost shown by the harness when the task ends.
 | Task | Model / harness / effort | Elapsed | Human time | Quota | Rework rounds | Accepted | Escaped defects |
 |------|--------------------------|---------|------------|-------|---------------|----------|-----------------|
 | T1 — Slice 1 | gpt-6-astra / pi / default | 16m 37s | not measured | $3.023980 harness-reported delta | 4 validation fixes | Automated checks pass; human review pending | Unlimited verify attempts (user validation; fixed in T2) |
-| T2 — Verify attempt limit | gpt-6-astra / pi | 5m 36s | not measured | $1.439262 harness-reported delta | 1 user-reported defect | Automated checks pass; user revalidation pending | See ACCEPTANCE.md |
+| T2 — Verify attempt limit | gpt-6-astra / pi | 5m 36s | not measured | $1.439262 harness-reported delta | 1 user-reported defect | Superseded: account lockout regression | See ACCEPTANCE.md |
+| T3 — Challenge isolation | gpt-6-astra / pi | 10m 50s | not measured | $2.387732 harness-reported delta | 1 user-reported design defect | Automated checks pass; user revalidation pending | See ACCEPTANCE.md |
 
 ## Entries
 
@@ -76,4 +77,11 @@ Quota: copy the usage/cost shown by the harness when the task ends.
 - Human intervention: user correctly identified that T2 enables email-targeted account denial of service.
 - Plan: browser-bound independent login challenges; atomic five-attempt challenge budget; source/global issuance limits independent of target email; no account lockout. Preserve victim challenges during attacker requests.
 - Usage baseline: `usage/challenge-isolation-start.json`.
-- Result / checks / final usage: pending.
+- End: 2026-10-02T16:38:28.963327+00:00; elapsed 650.26 seconds (10m 50s), excluding log closure.
+- Fix: `85ba3c7`. Removed all account verification counters. Each issuance creates a new browser-bound challenge (256-bit HttpOnly cookie, only keyed hashes stored); five atomic attempts per challenge. Issuing a challenge never overwrites another browser's code.
+- Abuse control: persistent issuance budgets of 20 per socket peer IP / 200 globally per ten minutes, regardless of email. Cookie resets and spoofed forwarding headers cannot evade the peer budget. Unknown/throttled requests have identical 200 bodies/cookie shapes. Verification of existing challenges is not gated by issuance budgets.
+- Checks: `make test` — 53 backend + 17 frontend passed; `make build`; `make lint`; `make e2e` (same-IP independent browsers, 20 concurrent attacker attempts, attacker reissuance, admin logs in with original code); Django system/migration-drift checks; `git diff --check`. All passed. Existing bundle-size warning unchanged.
+- Migration: `accounts.0003` applied using `make migrate`. Users/roles/authenticated sessions preserved; legacy unbound pending codes require reissuance. No .env access or changes.
+- Final usage: `usage/challenge-isolation-end.json`; delta 16,178 input + 10,256 output + 1,713,152 cache-read = 1,739,586 tokens; harness-reported cost delta $2.387732. Subsequent closure/final reply excluded; not provider quota.
+- Remaining limitations: shared NAT/proxy peers share issuance budgets (Vite is the local peer), so a shared-source attacker can delay new issuance. A distributed flood can exhaust global issuance; valid existing challenges remain usable. This fixes email-targeted account lockout, not general DoS. README documents trusted-proxy/adaptive-abuse-control deployment needs.
+- Result: regression and E2E checks pass; awaiting user revalidation. T2's account-lockout design is superseded.

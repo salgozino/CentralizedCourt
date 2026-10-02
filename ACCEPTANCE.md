@@ -22,4 +22,5 @@ Bugs found after a criterion was marked as passed.
 
 | Date | Criterion # | Description | Found by | Fix commit |
 | ---- | ----------- | ----------- | -------- | ---------- |
-| 2026-10-02 | 1 | `/api/auth/verify` allowed unlimited code guesses. Fixed with persistent five-attempt/ten-minute account budget, atomic reservation and no reset on code reissue. Evidence: `test_verify_limits.py` (6 regressions), `make e2e` concurrent HTTP attempts. | User validation | `60b0a6f` |
+| 2026-10-02 | 1 | `/api/auth/verify` allowed unlimited code guesses. Initial account-budget fix introduced account DoS (see next row); superseded by bounded browser challenges and source/global issuance limits. | User validation | `60b0a6f`, superseded by `85ba3c7` |
+| 2026-10-02 | 1 | Knowing an email allowed exhausting the victim's account budget; reissuance also invalidated victim codes. Removed account lockout; isolated browser-bound challenges. Evidence: `test_attacker_cannot_block_admin_even_on_same_ip`, `test_admin_can_start_login_after_attack_from_another_source`, 15 security regressions, browser E2E with concurrent attacker requests while admin retains original code. | User review | `85ba3c7` |
