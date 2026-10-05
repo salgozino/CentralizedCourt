@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfig, loadConfig } from './config/config';
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { dataSourceOptions } from './data-source';
 
@@ -17,6 +18,7 @@ import { dataSourceOptions } from './data-source';
       useFactory: (config: ConfigService) => dataSourceOptions(config.getOrThrow<AppConfig>('app').dbPath),
     }),
     AuthModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

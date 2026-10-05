@@ -97,7 +97,7 @@ export class Browser {
 
   constructor(private readonly booted: BootedApp) {}
 
-  async request(method: 'get' | 'post', path: string, json?: unknown, opts: RequestOptions = {}): Promise<request.Response> {
+  async request(method: 'get' | 'post' | 'put', path: string, json?: unknown, opts: RequestOptions = {}): Promise<request.Response> {
     const cookies = opts.cookies ? new Map(Object.entries(opts.cookies)) : new Map(this.jar);
     for (const name of opts.dropCookies ?? []) cookies.delete(name);
     let req = request(this.booted.app.getHttpServer())[method](path).set('X-Forwarded-For', this.ip);
@@ -118,6 +118,10 @@ export class Browser {
 
   post(path: string, json?: unknown, opts?: RequestOptions) {
     return this.request('post', path, json, opts);
+  }
+
+  put(path: string, json?: unknown, opts?: RequestOptions) {
+    return this.request('put', path, json, opts);
   }
 
   async requestCode(email: string): Promise<string> {
