@@ -21,3 +21,7 @@ backend/.env*
 !backend/.env.example
 # Held-out Day 5 feature
 day5.md
+
+# Yarn state for the root tooling project
+.yarn/
+*.tsbuildinfo

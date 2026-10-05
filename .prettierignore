@@ -1,0 +1,15 @@
+# Lockfiles and generated output
+yarn.lock
+**/yarn.lock
+**/dist
+**/node_modules
+.yarn
+**/.yarn
+**/coverage
+
+# Local-only / non-code content
+.atl
+odd
+*.html
+*.md
+*.sqlite3

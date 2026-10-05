@@ -1,9 +1,16 @@
-.PHONY: setup dev-backend dev-frontend test test-contract migrate seed
+.PHONY: setup lint dev-backend dev-frontend test test-contract migrate seed
 
 setup:
+	yarn install
 	cd backend && yarn install
 	cd frontend && yarn install
 	cd contract-tests && yarn install
+
+# Zero-warning gate, same checks as the pre-commit hook but over the whole repo.
+lint:
+	yarn prettier --check .
+	yarn eslint --max-warnings 0 backend contract-tests
+	cd frontend && yarn lint
 
 dev-backend:
 	cd backend && PORT=8000 yarn start:dev

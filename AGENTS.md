@@ -10,6 +10,8 @@ the current state.
   mounted at `/api/`.
 - **Frontend** (`frontend/`): Vite + React 18 + TypeScript + Tailwind v4 +
   `@kleros/ui-components-library`. React must stay on 18 (library peer dependency).
+- **Root tooling** (`package.json` at the repo root): husky, lint-staged, commitlint, ESLint and
+  Prettier only. It is not a workspace root; the three packages keep their own lockfiles.
 - **Package manager**: Yarn 4 with `nodeLinker: node-modules`. Node and Yarn are pinned
   with Volta in each `package.json`. Do not use npm or pnpm in `backend/`, `frontend/`
   or `contract-tests/`.
@@ -22,7 +24,8 @@ Always use the root `Makefile` targets, run from the repository root:
 
 | Command              | What it does                                                         |
 | -------------------- | -------------------------------------------------------------------- |
-| `make setup`         | Runs `yarn install` in `backend/`, `frontend/` and `contract-tests/` |
+| `make setup`         | Runs `yarn install` in the root (installs git hooks), `backend/`, `frontend/` and `contract-tests/` |
+| `make lint`          | Prettier check, ESLint (backend, contract-tests) and oxlint (frontend), zero warnings |
 | `make migrate`       | Builds the backend and applies TypeORM migrations to SQLite          |
 | `make seed`          | Builds the backend and runs the idempotent seed (9 users)            |
 | `make dev-backend`   | Starts Nest in watch mode on http://localhost:8000                   |
@@ -46,6 +49,16 @@ The backend reads `backend/.env` (see `backend/.env.example`). `SECRET_KEY` is
 required; the backend will not start without it. Optional: `DB_PATH` (defaults to
 `backend/db.sqlite3`), `DEBUG`, `PORT` (defaults to 8000). Never commit `.env`, and do not read or
 write it: ask the user to create or change it.
+
+## Lint and hooks
+
+- `make setup` installs the git hooks (husky). `pre-commit` runs `lint-staged` (Prettier check plus ESLint
+  with `--max-warnings 0` for backend and contract-tests, oxlint with `--deny-warnings` for frontend).
+  `commit-msg` enforces Conventional Commits with commitlint.
+- Format with `yarn prettier --write <paths>` from the root; `yarn eslint --fix backend contract-tests` fixes
+  what it can.
+- Do not bypass hooks with `--no-verify`, and do not add `eslint-disable` without a one-line justification.
+- `make lint` must pass, with zero warnings, before a task is considered done.
 
 ## Tests
 
