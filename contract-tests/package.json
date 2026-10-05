@@ -1,0 +1,20 @@
+{
+  "name": "contract-tests",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "test": "jest --runInBand"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.13.3",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.4.0",
+    "typescript": "~5.9.0"
+  },
+  "packageManager": "yarn@4.13.0",
+  "volta": {
+    "node": "24.14.1",
+    "yarn": "4.13.0"
+  }
+}
