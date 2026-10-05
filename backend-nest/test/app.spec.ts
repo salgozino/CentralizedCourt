@@ -30,9 +30,10 @@ describe('app bootstrap', () => {
   });
 
   it('serves under the /api prefix (unknown routes are 404 JSON)', async () => {
-    const res = await request(app.getHttpServer()).get('/api/me');
+    const res = await request(app.getHttpServer()).get('/api/nope');
     expect(res.status).toBe(404);
     expect(res.headers['content-type']).toMatch(/json/);
+    expect(res.body).toEqual({ detail: 'Not Found' });
   });
 
   it('exits with a clear message when SECRET_KEY is missing', () => {

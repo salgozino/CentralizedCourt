@@ -24,9 +24,11 @@
     "@nestjs/typeorm": "^11",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^18.0.5",
+    "express": "^5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "typeorm": "^0.3"
+    "typeorm": "^0.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@nestjs/testing": "^11",
