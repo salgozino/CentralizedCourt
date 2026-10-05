@@ -52,8 +52,8 @@ Other observations:
 
 - `POST /api/auth/logout` needs no CSRF token (the route is unauthenticated); it answers 200
   `{"detail": "Logged out"}` with or without a session. Not asserted beyond the pytest cases.
-- `request-code` sets a `sessionid` cookie (the session stores the code ids) when the email exists;
-  login rotates it.
+- `request-code` sets a `sessionid` cookie (the session stores the code ids) for known and unknown
+  emails alike, so the response does not reveal whether an account exists; login rotates it.
 - Throttle buckets for requests whose last `X-Forwarded-For` entry is not an IP fall back to the
   socket address `127.0.0.1`, which all such requests share.
 
