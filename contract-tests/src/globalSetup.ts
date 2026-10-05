@@ -1,7 +1,6 @@
 import { RunningBackend, startBackend } from './backend';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __CONTRACT_BACKEND__: RunningBackend | undefined;
 }
 

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+
 import { codeSince, stdoutMark } from './stdout';
 
 export const ORIGIN = 'http://localhost:5173';

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { getMe, type User } from "./api";
-import HomePage from "./components/HomePage";
-import LoginPage from "./components/LoginPage";
+import { useEffect, useState } from 'react';
+import { getMe, type User } from './api';
+import HomePage from './components/HomePage';
+import LoginPage from './components/LoginPage';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);

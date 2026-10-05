@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { Checkbox } from "@kleros/ui-components-library";
-import { listUsers, setUserRoles, type ExtraRole, type User } from "../api";
+import { useEffect, useState } from 'react';
+import { Checkbox } from '@kleros/ui-components-library';
+import { listUsers, setUserRoles, type ExtraRole, type User } from '../api';
 
-const EXTRA_ROLES: ExtraRole[] = ["creator", "juror"];
+const EXTRA_ROLES: ExtraRole[] = ['creator', 'juror'];
 
 type Props = Readonly<{
   currentUserId: number;
@@ -17,23 +17,21 @@ export default function AdminUsersSection({ currentUserId, onSelfChange }: Props
     let active = true;
     listUsers()
       .then((list) => active && setUsers(list))
-      .catch(() => active && setError("Could not load users"));
+      .catch(() => active && setError('Could not load users'));
     return () => {
       active = false;
     };
   }, []);
 
   async function toggle(target: User, role: ExtraRole, on: boolean) {
-    const next = EXTRA_ROLES.filter((r) =>
-      r === role ? on : target.roles.includes(r),
-    );
+    const next = EXTRA_ROLES.filter((r) => (r === role ? on : target.roles.includes(r)));
     setError(null);
     try {
       const updated = await setUserRoles(target.id, next);
       setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? prev);
       if (updated.id === currentUserId) onSelfChange(updated);
     } catch {
-      setError("Could not update roles");
+      setError('Could not update roles');
     }
   }
 
@@ -60,7 +58,7 @@ export default function AdminUsersSection({ currentUserId, onSelfChange }: Props
             {users.map((u) => (
               <tr key={u.id}>
                 <td>{u.email}</td>
-                <td>{u.roles.join(", ")}</td>
+                <td>{u.roles.join(', ')}</td>
                 <td className="flex gap-4">
                   {EXTRA_ROLES.map((role) => (
                     <Checkbox

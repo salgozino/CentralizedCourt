@@ -1,60 +1,60 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { ApiError, getMe, setUserRoles, verifyCode } from "./api";
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { ApiError, getMe, setUserRoles, verifyCode } from './api';
 
 const fetchMock = vi.fn();
 
 beforeEach(() => {
-  vi.stubGlobal("fetch", fetchMock);
-  document.cookie = "csrftoken=abc123";
+  vi.stubGlobal('fetch', fetchMock);
+  document.cookie = 'csrftoken=abc123';
 });
 
 afterEach(() => {
   fetchMock.mockReset();
   vi.unstubAllGlobals();
-  document.cookie = "csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  document.cookie = 'csrftoken=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 });
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { 'Content-Type': 'application/json' },
   });
 
-test("PUT sends X-CSRFToken from the cookie", async () => {
-  const user = { id: 2, email: "a@b.c", roles: ["creator", "user"] };
+test('PUT sends X-CSRFToken from the cookie', async () => {
+  const user = { id: 2, email: 'a@b.c', roles: ['creator', 'user'] };
   fetchMock.mockResolvedValue(json(200, user));
-  await expect(setUserRoles(2, ["creator"])).resolves.toEqual(user);
+  await expect(setUserRoles(2, ['creator'])).resolves.toEqual(user);
   const [url, init] = fetchMock.mock.calls[0];
-  expect(url).toBe("/api/admin/users/2/roles");
-  expect(init.method).toBe("PUT");
-  expect(init.credentials).toBe("same-origin");
-  expect(new Headers(init.headers).get("X-CSRFToken")).toBe("abc123");
-  expect(init.body).toBe(JSON.stringify({ roles: ["creator"] }));
+  expect(url).toBe('/api/admin/users/2/roles');
+  expect(init.method).toBe('PUT');
+  expect(init.credentials).toBe('same-origin');
+  expect(new Headers(init.headers).get('X-CSRFToken')).toBe('abc123');
+  expect(init.body).toBe(JSON.stringify({ roles: ['creator'] }));
 });
 
-test("POST sends X-CSRFToken from the cookie", async () => {
-  fetchMock.mockResolvedValue(json(200, { id: 1, email: "a@b.c", roles: ["user"] }));
-  await verifyCode("a@b.c", "123456");
+test('POST sends X-CSRFToken from the cookie', async () => {
+  fetchMock.mockResolvedValue(json(200, { id: 1, email: 'a@b.c', roles: ['user'] }));
+  await verifyCode('a@b.c', '123456');
   const [url, init] = fetchMock.mock.calls[0];
-  expect(url).toBe("/api/auth/verify");
-  expect(new Headers(init.headers).get("X-CSRFToken")).toBe("abc123");
+  expect(url).toBe('/api/auth/verify');
+  expect(new Headers(init.headers).get('X-CSRFToken')).toBe('abc123');
 });
 
-test("GET does not send X-CSRFToken", async () => {
-  fetchMock.mockResolvedValue(json(200, { id: 1, email: "a@b.c", roles: ["user"] }));
+test('GET does not send X-CSRFToken', async () => {
+  fetchMock.mockResolvedValue(json(200, { id: 1, email: 'a@b.c', roles: ['user'] }));
   await getMe();
   const [, init] = fetchMock.mock.calls[0];
-  expect(new Headers(init.headers).get("X-CSRFToken")).toBeNull();
+  expect(new Headers(init.headers).get('X-CSRFToken')).toBeNull();
 });
 
-test("getMe returns null on 401", async () => {
-  fetchMock.mockResolvedValue(json(401, { detail: "Unauthorized" }));
+test('getMe returns null on 401', async () => {
+  fetchMock.mockResolvedValue(json(401, { detail: 'Unauthorized' }));
   await expect(getMe()).resolves.toBeNull();
 });
 
-test("non-2xx throws ApiError with status", async () => {
-  fetchMock.mockResolvedValue(json(401, { detail: "nope" }));
-  const err = await verifyCode("a@b.c", "000000").catch((e) => e);
+test('non-2xx throws ApiError with status', async () => {
+  fetchMock.mockResolvedValue(json(401, { detail: 'nope' }));
+  const err = await verifyCode('a@b.c', '000000').catch((e) => e);
   expect(err).toBeInstanceOf(ApiError);
   expect(err.status).toBe(401);
 });

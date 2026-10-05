@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { DataSource, DataSourceOptions } from 'typeorm';
+
 import { resolveDbPath } from './config/config';
 import { ENTITIES } from './entities';
 import { MIGRATIONS } from './migrations';

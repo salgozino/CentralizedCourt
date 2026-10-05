@@ -1,8 +1,10 @@
+import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
+
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 import { DataSource, In, IsNull, LessThan, MoreThan } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
+
 import { LoginCode, LoginEvent, LoginEventKind, User } from '../entities';
 import { SessionStore } from '../session/session-store';
 
@@ -92,7 +94,11 @@ export class LoginCodeService {
     if (live.length) await this.codes.update({ id: In(live.map((c) => c.id)) }, { usedAt: now });
     const code = String(randomInt(1_000_000)).padStart(6, '0');
     const created = await this.codes.save(
-      this.codes.create({ userId: user.id, codeHash: hashCode(code), expiresAt: new Date(now.getTime() + CODE_TTL_MS) }),
+      this.codes.create({
+        userId: user.id,
+        codeHash: hashCode(code),
+        expiresAt: new Date(now.getTime() + CODE_TTL_MS),
+      }),
     );
     const ids = [...(session.get<number[]>(SESSION_CODE_IDS_KEY) ?? []), created.id];
     session.set(SESSION_CODE_IDS_KEY, ids.slice(-MAX_CODES_PER_SESSION));
@@ -116,9 +122,15 @@ export class LoginCodeService {
       const claim = await this.codes.update({ id: loginCode.id, usedAt: IsNull() }, { usedAt: now });
       if (claim.affected === 1) {
         const ids = session.get<number[]>(SESSION_CODE_IDS_KEY) ?? [];
-        session.set(SESSION_CODE_IDS_KEY, ids.filter((id) => id !== loginCode.id));
+        session.set(
+          SESSION_CODE_IDS_KEY,
+          ids.filter((id) => id !== loginCode.id),
+        );
         await this.events.delete({ id: slot });
-        return { user: user!, undo: async () => void (await this.codes.update({ id: loginCode.id }, { usedAt: null })) };
+        return {
+          user: user!,
+          undo: async () => void (await this.codes.update({ id: loginCode.id }, { usedAt: null })),
+        };
       }
     }
     if (codes.length) {

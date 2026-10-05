@@ -1,10 +1,13 @@
-import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
+import { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
 import request from 'supertest';
+
 import { APP_OPTIONS, configureApp } from '../src/app';
+
 import { tempDbPath } from './helpers';
 
 describe('app bootstrap', () => {

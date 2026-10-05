@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { json } from 'express';
 import type { NextFunction, Request, Response } from 'express';
+
 import { ApiExceptionFilter } from './http/errors';
 
 export const GLOBAL_PREFIX = 'api';
@@ -31,7 +32,8 @@ function jsonBody() {
       if (!error) return next();
       const { status, type, expose, message } = error as BodyParserError;
       if (type === 'entity.parse.failed') return res.status(422).json({ detail: 'Cannot parse request body' });
-      if (status !== undefined && status >= 400 && status < 500 && expose) return res.status(status).json({ detail: message });
+      if (status !== undefined && status >= 400 && status < 500 && expose)
+        return res.status(status).json({ detail: message });
       next(error);
     });
 }

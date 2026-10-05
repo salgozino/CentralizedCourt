@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+
 import { User } from '../entities';
 
 // email -> extra roles (the base "user" role is implicit).

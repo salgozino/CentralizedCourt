@@ -1,8 +1,9 @@
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { AppModule } from './app.module';
+import { NestFactory } from '@nestjs/core';
+
 import { APP_OPTIONS, configureApp } from './app';
+import { AppModule } from './app.module';
 import { AppConfig } from './config/config';
 
 async function bootstrap(): Promise<void> {

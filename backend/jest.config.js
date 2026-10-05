@@ -4,7 +4,10 @@ module.exports = {
   roots: ['<rootDir>/test'],
   testRegex: '\\.spec\\.ts$',
   transform: {
-    '^.+\\.ts$': ['ts-jest', { tsconfig: { ...require('./tsconfig.json').compilerOptions, rootDir: '.', types: ['node', 'jest'] } }],
+    '^.+\\.ts$': [
+      'ts-jest',
+      { tsconfig: { ...require('./tsconfig.json').compilerOptions, rootDir: '.', types: ['node', 'jest'] } },
+    ],
   },
   testTimeout: 20000,
 };

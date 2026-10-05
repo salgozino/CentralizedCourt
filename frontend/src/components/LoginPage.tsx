@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from "react";
-import { Button, TextField } from "@kleros/ui-components-library";
-import { ApiError, requestCode, verifyCode, type User } from "../api";
+import { useState, type FormEvent } from 'react';
+import { Button, TextField } from '@kleros/ui-components-library';
+import { ApiError, requestCode, verifyCode, type User } from '../api';
 
 export default function LoginPage({ onLogin }: Readonly<{ onLogin: (user: User) => void }>) {
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -17,7 +17,7 @@ export default function LoginPage({ onLogin }: Readonly<{ onLogin: (user: User) 
       await requestCode(email);
       setCodeSent(true);
     } catch {
-      setError("Could not request a code. Please try again.");
+      setError('Could not request a code. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -32,8 +32,8 @@ export default function LoginPage({ onLogin }: Readonly<{ onLogin: (user: User) 
     } catch (err) {
       setError(
         err instanceof ApiError && err.status === 401
-          ? "Invalid or expired code"
-          : "Could not verify the code. Please try again.",
+          ? 'Invalid or expired code'
+          : 'Could not verify the code. Please try again.',
       );
       setBusy(false);
     }
@@ -54,7 +54,7 @@ export default function LoginPage({ onLogin }: Readonly<{ onLogin: (user: User) 
             label="Code"
             value={code}
             onChange={setCode}
-            inputProps={{ inputMode: "numeric", maxLength: 6, autoComplete: "one-time-code" }}
+            inputProps={{ inputMode: 'numeric', maxLength: 6, autoComplete: 'one-time-code' }}
             isRequired
           />
           <Button type="submit" text="Verify" isDisabled={busy} />
@@ -64,7 +64,7 @@ export default function LoginPage({ onLogin }: Readonly<{ onLogin: (user: User) 
             text="Change email"
             onPress={() => {
               setCodeSent(false);
-              setCode("");
+              setCode('');
               setError(null);
             }}
           />

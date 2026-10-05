@@ -1,10 +1,13 @@
+import { randomBytes } from 'node:crypto';
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomBytes } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { In, Repository } from 'typeorm';
+
 import { Session, User } from '../entities';
 import { deleteCookie, requestCookies, setCookie } from '../http/cookies';
+
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, SessionData, SessionHandle } from './session-handle';
 
 /** Key of the user id inside the session data. */
@@ -75,7 +78,7 @@ export class SessionService {
     if (handle.key) return (await this.merge(handle.key, handle.key, handle.changes, expiresAt)) ? handle.key : null;
     const key = randomBytes(24).toString('base64url');
     if (handle.rotatedFrom && (await this.merge(handle.rotatedFrom, key, handle.changes, expiresAt))) return key;
-    // Created in this request, or the rotated row vanished meanwhile: either way the key is new, nothing is resurrected.
+    // Created in this request, or the rotated row vanished meanwhile: the key is new, nothing is resurrected.
     await this.sessions.save(this.sessions.create({ id: key, data: handle.changes, expiresAt }));
     return key;
   }

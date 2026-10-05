@@ -1,7 +1,10 @@
 import * as fs from 'node:fs';
+
 import { DataSource } from 'typeorm';
+
 import { dataSourceOptions } from '../src/data-source';
 import { LoginCode, LoginEvent, Session, User } from '../src/entities';
+
 import { migratedDataSource, tempDbPath } from './helpers';
 
 describe('migrations', () => {
@@ -51,7 +54,11 @@ describe('migrations', () => {
   it('cascades login codes when the user is deleted', async () => {
     const user = await dataSource.getRepository(User).save({ email: 'cascade@example.com' });
     const codes = dataSource.getRepository(LoginCode);
-    const code = await codes.save({ userId: user.id, codeHash: 'a'.repeat(64), expiresAt: new Date(Date.now() + 600_000) });
+    const code = await codes.save({
+      userId: user.id,
+      codeHash: 'a'.repeat(64),
+      expiresAt: new Date(Date.now() + 600_000),
+    });
     expect(code).toMatchObject({ usedAt: null, failedAttempts: 0 });
     await dataSource.getRepository(User).delete(user.id);
     expect(await codes.count({ where: { userId: user.id } })).toBe(0);

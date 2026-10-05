@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+
 import { loadConfig } from '../src/config/config';
 
 describe('loadConfig', () => {

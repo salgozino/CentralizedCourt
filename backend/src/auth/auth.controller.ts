@@ -1,15 +1,18 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
+
 import { resolveClientIp } from '../http/client-ip';
 import { requestCookies } from '../http/cookies';
 import { ZodBodyPipe } from '../http/validation';
 import { SessionService } from '../session/session.service';
+
 import { CSRF_COOKIE, isValidSecret, newCsrfSecret, setCsrfCookie } from './csrf';
 import { RequestCodeIn, UserOut, VerifyIn, toUserOut } from './dto';
 import { LoginCodeService } from './login-code.service';
 import { AuthenticatedRequest, SessionAuthGuard } from './session-auth.guard';
 
-const clientIp = (req: Request) => resolveClientIp(req.socket.remoteAddress, req.headers['x-forwarded-for'] as string | undefined);
+const clientIp = (req: Request) =>
+  resolveClientIp(req.socket.remoteAddress, req.headers['x-forwarded-for'] as string | undefined);
 
 @Controller()
 export class AuthController {

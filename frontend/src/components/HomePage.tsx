@@ -1,6 +1,6 @@
-import { Button } from "@kleros/ui-components-library";
-import { logout, type User } from "../api";
-import AdminUsersSection from "./AdminUsersSection";
+import { Button } from '@kleros/ui-components-library';
+import { logout, type User } from '../api';
+import AdminUsersSection from './AdminUsersSection';
 
 type Props = Readonly<{
   user: User;
@@ -10,7 +10,7 @@ type Props = Readonly<{
 
 export default function HomePage({ user, onLogout, onUserChange }: Props) {
   const has = (role: string) => user.roles.includes(role);
-  const hasPermissions = ["admin", "creator", "juror"].some(has);
+  const hasPermissions = ['admin', 'creator', 'juror'].some(has);
 
   async function handleLogout() {
     try {
@@ -36,10 +36,8 @@ export default function HomePage({ user, onLogout, onUserChange }: Props) {
         <Button text="Log out" variant="secondary" onPress={handleLogout} />
       </header>
       <main className="flex flex-col gap-8">
-        {has("admin") && (
-          <AdminUsersSection currentUserId={user.id} onSelfChange={onUserChange} />
-        )}
-        {has("creator") && (
+        {has('admin') && <AdminUsersSection currentUserId={user.id} onSelfChange={onUserChange} />}
+        {has('creator') && (
           <section aria-labelledby="cases-heading">
             <h2 id="cases-heading" className="text-xl font-semibold">
               Cases
@@ -47,7 +45,7 @@ export default function HomePage({ user, onLogout, onUserChange }: Props) {
             <p>Cases will be available in slice 2.</p>
           </section>
         )}
-        {has("juror") && (
+        {has('juror') && (
           <section aria-labelledby="assignments-heading">
             <h2 id="assignments-heading" className="text-xl font-semibold">
               My assignments
@@ -55,9 +53,7 @@ export default function HomePage({ user, onLogout, onUserChange }: Props) {
             <p>Assignments will be available in slice 3.</p>
           </section>
         )}
-        {!hasPermissions && (
-          <p>You have no permissions yet. Ask an admin to assign you a role.</p>
-        )}
+        {!hasPermissions && <p>You have no permissions yet. Ask an admin to assign you a role.</p>}
       </main>
     </div>
   );

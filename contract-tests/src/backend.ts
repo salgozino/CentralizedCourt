@@ -59,7 +59,8 @@ interface BackendSpec {
 
 function startBackendSpec(port: number, dbPath: string): BackendSpec {
   const cwd = path.join(REPO_ROOT, 'backend');
-  if (!fs.existsSync(path.join(cwd, 'node_modules'))) throw new Error(`Missing ${cwd}/node_modules; run \`make setup\` first.`);
+  if (!fs.existsSync(path.join(cwd, 'node_modules')))
+    throw new Error(`Missing ${cwd}/node_modules; run \`make setup\` first.`);
   // Build once per run, so the contract always exercises the current sources.
   runToCompletion('yarn', ['build'], cwd, process.env);
   const env = { ...process.env, SECRET_KEY: SECRET, DEBUG: 'false', PORT: String(port), DB_PATH: dbPath };

@@ -1,6 +1,8 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
+
 import { requestCookies } from '../http/cookies';
+
 import { CSRF_COOKIE, CSRF_HEADER, TRUSTED_ORIGINS, isValidSecret, tokenMatches } from './csrf';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE']);

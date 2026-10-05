@@ -2,12 +2,14 @@ import { Body, Controller, Get, NotFoundException, Param, Put, UseGuards } from 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { z } from 'zod';
+
 import { CsrfGuard } from '../auth/csrf.guard';
 import { UserOut, toUserOut } from '../auth/dto';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import { User } from '../entities';
 import { UnprocessableException } from '../http/errors';
 import { ZodBodyPipe } from '../http/validation';
+
 import { AdminGuard } from './admin.guard';
 
 const RolesIn = z.object({ roles: z.array(z.enum(['creator', 'juror'])) });
@@ -16,7 +18,11 @@ const RolesIn = z.object({ roles: z.array(z.enum(['creator', 'juror'])) });
 const parseUserId = (raw: string): number => {
   if (!/^[+-]?\d+$/.test(raw)) {
     throw new UnprocessableException([
-      { type: 'int_parsing', loc: ['path', 'user_id'], msg: 'Input should be a valid integer, unable to parse string as an integer' },
+      {
+        type: 'int_parsing',
+        loc: ['path', 'user_id'],
+        msg: 'Input should be a valid integer, unable to parse string as an integer',
+      },
     ]);
   }
   return Number(raw);
@@ -34,7 +40,10 @@ export class AdminController {
   }
 
   @Put('users/:userId/roles')
-  async setRoles(@Param('userId') rawId: string, @Body(new ZodBodyPipe(RolesIn)) payload: z.infer<typeof RolesIn>): Promise<UserOut> {
+  async setRoles(
+    @Param('userId') rawId: string,
+    @Body(new ZodBodyPipe(RolesIn)) payload: z.infer<typeof RolesIn>,
+  ): Promise<UserOut> {
     const id = parseUserId(rawId);
     // Beyond 2^53 the id cannot exist anyway (and would not round-trip through Number).
     const user = Number.isSafeInteger(id) ? await this.users.findOneBy({ id }) : null;

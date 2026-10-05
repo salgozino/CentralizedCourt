@@ -1,4 +1,5 @@
 import { User } from '../src/entities';
+
 import { Browser, BootedApp, bootApp } from './helpers';
 
 const rolesUrl = (id: number) => `/api/admin/users/${id}/roles`;

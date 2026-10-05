@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
+
 import { DataSource, MoreThan } from 'typeorm';
+
 import {
   LOGIN_THROTTLE_WINDOW_MS,
   LoginCodeService,
@@ -13,6 +15,7 @@ import {
 import { LoginCode, LoginEvent, User } from '../src/entities';
 import { seedUsers } from '../src/seed/seed';
 import { SessionStore } from '../src/session/session-store';
+
 import { migratedDataSource, tempDbPath } from './helpers';
 
 class MemorySession implements SessionStore {
@@ -145,12 +148,17 @@ describe('LoginCodeService', () => {
     });
 
     it('counts unknown emails toward the request cap', async () => {
-      for (let i = 0; i < MAX_CODE_REQUESTS_PER_IP; i++) await requestCode(`nobody${i}@example.com`, '10.0.0.66', new MemorySession());
+      for (let i = 0; i < MAX_CODE_REQUESTS_PER_IP; i++)
+        await requestCode(`nobody${i}@example.com`, '10.0.0.66', new MemorySession());
       expect(await requestCode(JUROR1, '10.0.0.66', new MemorySession())).toBeNull();
     });
 
     it('holds the request cap under parallel requests from one IP', async () => {
-      await Promise.all(Array.from({ length: 3 * MAX_CODE_REQUESTS_PER_IP }, () => service.issue(JUROR1, '10.0.0.66', new MemorySession())));
+      await Promise.all(
+        Array.from({ length: 3 * MAX_CODE_REQUESTS_PER_IP }, () =>
+          service.issue(JUROR1, '10.0.0.66', new MemorySession()),
+        ),
+      );
       expect(await events().count({ where: { ip: '10.0.0.66', kind: 'request' } })).toBe(MAX_CODE_REQUESTS_PER_IP);
       expect(await codes().count()).toBe(MAX_CODE_REQUESTS_PER_IP);
     });
@@ -229,7 +237,9 @@ describe('LoginCodeService', () => {
       expect(await service.verify(JUROR1, code!, '10.0.0.66', attacker)).toBeNull();
       expect(await events().count({ where: { kind: 'failure' } })).toBe(MAX_FAILED_VERIFICATIONS_PER_IP);
       const other = new MemorySession();
-      expect(await service.verify(JUROR1, (await requestCode(JUROR1, '10.0.0.1', other))!, '10.0.0.1', other)).not.toBeNull();
+      expect(
+        await service.verify(JUROR1, (await requestCode(JUROR1, '10.0.0.1', other))!, '10.0.0.1', other),
+      ).not.toBeNull();
     });
 
     it('holds the failure cap under parallel guesses from one IP', async () => {

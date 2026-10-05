@@ -1,9 +1,12 @@
 import { resolveClientIp } from '../src/http/client-ip';
 
 describe('resolveClientIp', () => {
-  it.each(['127.0.0.1', '::1', '::ffff:127.0.0.1'])('trusts the last X-Forwarded-For entry from loopback %s', (remote) => {
-    expect(resolveClientIp(remote, '10.0.0.1, 10.0.0.66')).toBe('10.0.0.66');
-  });
+  it.each(['127.0.0.1', '::1', '::ffff:127.0.0.1'])(
+    'trusts the last X-Forwarded-For entry from loopback %s',
+    (remote) => {
+      expect(resolveClientIp(remote, '10.0.0.1, 10.0.0.66')).toBe('10.0.0.66');
+    },
+  );
 
   it('ignores X-Forwarded-For when the remote address is not loopback', () => {
     expect(resolveClientIp('10.0.0.5', '10.0.0.1')).toBe('10.0.0.5');

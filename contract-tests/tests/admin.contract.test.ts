@@ -40,7 +40,11 @@ describe('role mutations', () => {
   it('grants roles and the user sees them', async () => {
     const res = await (await adminClient()).put(rolesUrl(idOf('user@example.com')), { roles: ['creator', 'juror'] });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ id: idOf('user@example.com'), email: 'user@example.com', roles: ['creator', 'juror', 'user'] });
+    expect(res.body).toEqual({
+      id: idOf('user@example.com'),
+      email: 'user@example.com',
+      roles: ['creator', 'juror', 'user'],
+    });
     const me = await (await new Client().login('user@example.com')).get('/api/me');
     expect(me.body.roles).toEqual(['creator', 'juror', 'user']);
   });
@@ -80,7 +84,11 @@ describe('role mutations', () => {
     const admin = await adminClient();
     const token = admin.cookie('csrftoken');
     expect(token).toBeTruthy();
-    const res = await admin.put(rolesUrl(idOf('user@example.com')), { roles: ['juror'] }, { csrf: false, headers: { 'X-CSRFToken': token! } });
+    const res = await admin.put(
+      rolesUrl(idOf('user@example.com')),
+      { roles: ['juror'] },
+      { csrf: false, headers: { 'X-CSRFToken': token! } },
+    );
     expect(res.status).toBe(200);
     expect(res.body.roles).toEqual(['juror', 'user']);
   });
@@ -179,16 +187,23 @@ describe('CSRF on authenticated unsafe requests', () => {
 
   it('admin PUT from an untrusted Origin is 403 mentioning CSRF', async () => {
     const admin = await adminClient();
-    const res = await admin.put(rolesUrl(idOf('user@example.com')), { roles: ['juror'] }, { headers: { Origin: 'http://evil.example' } });
+    const res = await admin.put(
+      rolesUrl(idOf('user@example.com')),
+      { roles: ['juror'] },
+      { headers: { Origin: 'http://evil.example' } },
+    );
     expect(res.status).toBe(403);
     expect(res.body.detail).toContain('CSRF');
   });
 
   it('non-admin PUT with a valid token is 403 for the role, not CSRF', async () => {
     const user = await new Client().login('user@example.com');
-    const res = await user.put(rolesUrl(idOf('user@example.com')), { roles: ['juror'] }, { csrf: false, headers: { 'X-CSRFToken': user.cookie('csrftoken')! } });
+    const res = await user.put(
+      rolesUrl(idOf('user@example.com')),
+      { roles: ['juror'] },
+      { csrf: false, headers: { 'X-CSRFToken': user.cookie('csrftoken')! } },
+    );
     expect(res.status).toBe(403);
     expect(res.body.detail).not.toContain('CSRF');
   });
 });
-

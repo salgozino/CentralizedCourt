@@ -108,9 +108,12 @@ describe('POST /api/auth/verify', () => {
     expect(res.body).toEqual({ detail: 'Invalid or expired code' });
   });
 
-  it.each([[{}], [{ email: JUROR1 }], [{ email: JUROR1, code: 123456 }]])('rejects invalid body %j with 422', async (body) => {
-    expect((await new Client().post('/api/auth/verify', body)).status).toBe(422);
-  });
+  it.each([[{}], [{ email: JUROR1 }], [{ email: JUROR1, code: 123456 }]])(
+    'rejects invalid body %j with 422',
+    async (body) => {
+      expect((await new Client().post('/api/auth/verify', body)).status).toBe(422);
+    },
+  );
 
   it('invalidates the older code when the same session requests a new one', async () => {
     const client = new Client();

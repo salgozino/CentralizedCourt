@@ -2,12 +2,14 @@ import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { DataSource } from 'typeorm';
 import { z } from 'zod';
-import { Session, User } from '../src/entities';
+
 import { CsrfGuard } from '../src/auth/csrf.guard';
 import { SessionAuthGuard } from '../src/auth/session-auth.guard';
+import { Session, User } from '../src/entities';
 import { ZodBodyPipe } from '../src/http/validation';
 import { SessionModule } from '../src/session/session.module';
 import { SessionService } from '../src/session/session.service';
+
 import { Browser, BootedApp, bootApp } from './helpers';
 
 const JUROR1 = 'juror1@example.com';
@@ -135,7 +137,9 @@ describe('auth over HTTP', () => {
       const b = await new Browser(booted).login(JUROR1);
       const before = b.jar.get('csrftoken');
       const me = await b.get('/api/me');
-      expect((me.headers['set-cookie'] as unknown as string[] | undefined)?.some((c) => c.startsWith('csrftoken='))).toBe(true);
+      expect(
+        (me.headers['set-cookie'] as unknown as string[] | undefined)?.some((c) => c.startsWith('csrftoken=')),
+      ).toBe(true);
       expect(b.jar.get('csrftoken')).toBe(before);
     });
 
@@ -190,7 +194,10 @@ describe('auth over HTTP', () => {
       const sessions = booted.app.get(SessionService);
       const req = { headers: { cookie: `sessionid=${oldKey}` } } as Request;
       const cookies: string[] = [];
-      const res = { headersSent: false, append: (_name: string, value: string) => cookies.push(value) } as unknown as Response;
+      const res = {
+        headersSent: false,
+        append: (_name: string, value: string) => cookies.push(value),
+      } as unknown as Response;
       const handle = await sessions.get(req);
       handle.cycleKey();
       handle.set('rotated', true);
@@ -215,7 +222,9 @@ describe('auth over HTTP', () => {
       }
       expect(failed.status).toBe(500);
       expect(failed.body).toEqual({ detail: 'Internal Server Error' });
-      expect(([failed.headers['set-cookie'] ?? []].flat() as string[]).filter((c) => c.startsWith('sessionid='))).toEqual([]);
+      expect(
+        ([failed.headers['set-cookie'] ?? []].flat() as string[]).filter((c) => c.startsWith('sessionid=')),
+      ).toEqual([]);
       const retry = await b.post('/api/auth/verify', { email: JUROR1, code }, { cookies });
       expect(retry.status).toBe(200);
       expect(retry.body.email).toBe(JUROR1);
@@ -225,7 +234,9 @@ describe('auth over HTTP', () => {
   describe('session auth', () => {
     it('ignores an expired session', async () => {
       const b = await new Browser(booted).login(JUROR1);
-      await ds.getRepository(Session).update({ id: b.jar.get('sessionid')! }, { expiresAt: new Date(Date.now() - 1000) });
+      await ds
+        .getRepository(Session)
+        .update({ id: b.jar.get('sessionid')! }, { expiresAt: new Date(Date.now() - 1000) });
       expect((await b.get('/api/me')).status).toBe(401);
     });
 
@@ -263,7 +274,10 @@ describe('auth over HTTP', () => {
 
   describe('CsrfGuard', () => {
     it('answers anonymous requests with 401 before any CSRF check', async () => {
-      const res = await new Browser(booted).post('/api/probe', undefined, { csrf: false, origin: 'http://evil.example' });
+      const res = await new Browser(booted).post('/api/probe', undefined, {
+        csrf: false,
+        origin: 'http://evil.example',
+      });
       expect(res.status).toBe(401);
       expect(res.body).toEqual({ detail: 'Unauthorized' });
     });
@@ -312,7 +326,11 @@ describe('auth over HTTP', () => {
     it('rejects when the csrftoken cookie is missing', async () => {
       const b = await new Browser(booted).login(JUROR1);
       const token = b.jar.get('csrftoken')!;
-      const res = await b.post('/api/probe', undefined, { csrf: false, headers: { 'X-CSRFToken': token }, dropCookies: ['csrftoken'] });
+      const res = await b.post('/api/probe', undefined, {
+        csrf: false,
+        headers: { 'X-CSRFToken': token },
+        dropCookies: ['csrftoken'],
+      });
       expect(res.status).toBe(403);
     });
   });
@@ -366,7 +384,9 @@ describe('auth over HTTP', () => {
 
     it('keeps the {detail} shape for body-parser errors other than malformed JSON', async () => {
       const b = new Browser(booted);
-      const tooLarge = await b.post('/api/auth/request-code', undefined, { raw: JSON.stringify({ email: 'x'.repeat(200_000) }) });
+      const tooLarge = await b.post('/api/auth/request-code', undefined, {
+        raw: JSON.stringify({ email: 'x'.repeat(200_000) }),
+      });
       expect(tooLarge.status).toBe(413);
       expect(tooLarge.body).toEqual({ detail: 'request entity too large' });
       const charset = await b.post('/api/auth/request-code', undefined, {
@@ -375,7 +395,10 @@ describe('auth over HTTP', () => {
       });
       expect(charset.status).toBe(415);
       expect(charset.body).toEqual({ detail: 'unsupported charset "LATIN1"' });
-      const encoding = await b.post('/api/auth/request-code', undefined, { raw: '{}', headers: { 'Content-Encoding': 'compress' } });
+      const encoding = await b.post('/api/auth/request-code', undefined, {
+        raw: '{}',
+        headers: { 'Content-Encoding': 'compress' },
+      });
       expect(encoding.status).toBe(415);
       expect(encoding.body).toEqual({ detail: 'unsupported content encoding "compress"' });
     });

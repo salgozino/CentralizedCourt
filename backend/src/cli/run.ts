@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
+
 import { resolveDbPath } from '../config/config';
 import { dataSourceOptions } from '../data-source';
 

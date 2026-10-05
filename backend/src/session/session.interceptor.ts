@@ -1,6 +1,7 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
+
 import { SessionService } from './session.service';
 
 /** Writes session changes (and the cookie) before the response is sent, success or not. */

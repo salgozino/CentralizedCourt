@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { User } from '../entities';
 
 export const RequestCodeIn = z.object({ email: z.string() });

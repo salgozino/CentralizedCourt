@@ -1,10 +1,12 @@
-import { INestApplication, ModuleMetadata } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+
+import { INestApplication, ModuleMetadata } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
+
 import { APP_OPTIONS, configureApp } from '../src/app';
 import { dataSourceOptions } from '../src/data-source';
 import { seedUsers } from '../src/seed/seed';
@@ -97,19 +99,25 @@ export class Browser {
 
   constructor(private readonly booted: BootedApp) {}
 
-  async request(method: 'get' | 'post' | 'put', path: string, json?: unknown, opts: RequestOptions = {}): Promise<request.Response> {
+  async request(
+    method: 'get' | 'post' | 'put',
+    path: string,
+    json?: unknown,
+    opts: RequestOptions = {},
+  ): Promise<request.Response> {
     const cookies = opts.cookies ? new Map(Object.entries(opts.cookies)) : new Map(this.jar);
     for (const name of opts.dropCookies ?? []) cookies.delete(name);
     let req = request(this.booted.app.getHttpServer())[method](path).set('X-Forwarded-For', this.ip);
     if (opts.origin !== null) req = req.set('Origin', opts.origin ?? 'http://localhost:5173');
     if (cookies.size) req = req.set('Cookie', [...cookies].map(([k, v]) => `${k}=${v}`).join('; '));
-    if ((opts.csrf ?? method !== 'get') && this.jar.has('csrftoken')) req = req.set('X-CSRFToken', this.jar.get('csrftoken')!);
+    if ((opts.csrf ?? method !== 'get') && this.jar.has('csrftoken'))
+      req = req.set('X-CSRFToken', this.jar.get('csrftoken')!);
     for (const [name, value] of Object.entries(opts.headers ?? {})) req = req.set(name, value);
     if (opts.raw !== undefined) {
-      if (!Object.keys(opts.headers ?? {}).some((name) => name.toLowerCase() === 'content-type')) req = req.set('Content-Type', 'application/json');
+      if (!Object.keys(opts.headers ?? {}).some((name) => name.toLowerCase() === 'content-type'))
+        req = req.set('Content-Type', 'application/json');
       req = req.send(opts.raw);
-    }
-    else if (json !== undefined) req = req.send(json as object);
+    } else if (json !== undefined) req = req.send(json as object);
     const res = await req;
     this.absorb((res.headers['set-cookie'] as unknown as string[] | undefined) ?? []);
     return res;

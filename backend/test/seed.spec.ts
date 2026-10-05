@@ -1,7 +1,10 @@
 import * as fs from 'node:fs';
+
 import { DataSource } from 'typeorm';
+
 import { User } from '../src/entities';
 import { seedUsers } from '../src/seed/seed';
+
 import { migratedDataSource, tempDbPath } from './helpers';
 
 const EXPECTED_ROLES: Record<string, string[]> = {

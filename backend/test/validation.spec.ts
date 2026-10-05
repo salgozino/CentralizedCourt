@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { UnprocessableException } from '../src/http/errors';
 import { ZodBodyPipe } from '../src/http/validation';
 
@@ -14,7 +15,9 @@ function detailOf(schema: z.ZodType, body: unknown): unknown {
 
 describe('ZodBodyPipe', () => {
   it('reports a missing field', () => {
-    expect(detailOf(z.object({ n: z.string() }), {})).toEqual([{ type: 'missing', loc: ['body', 'payload', 'n'], msg: 'Field required' }]);
+    expect(detailOf(z.object({ n: z.string() }), {})).toEqual([
+      { type: 'missing', loc: ['body', 'payload', 'n'], msg: 'Field required' },
+    ]);
   });
 
   it('classifies wrong types by the structured issue, not by its message', () => {
@@ -33,7 +36,12 @@ describe('ZodBodyPipe', () => {
 
   it('describes a bad literal like pydantic', () => {
     expect(detailOf(z.object({ r: z.enum(['a', 'b']) }), { r: 'c' })).toEqual([
-      { type: 'literal_error', loc: ['body', 'payload', 'r'], msg: "Input should be 'a' or 'b'", ctx: { expected: "'a' or 'b'" } },
+      {
+        type: 'literal_error',
+        loc: ['body', 'payload', 'r'],
+        msg: "Input should be 'a' or 'b'",
+        ctx: { expected: "'a' or 'b'" },
+      },
     ]);
   });
 });

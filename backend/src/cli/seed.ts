@@ -1,4 +1,5 @@
 import { seedUsers } from '../seed/seed';
+
 import { runCli } from './run';
 
 void runCli(async (dataSource) => {
