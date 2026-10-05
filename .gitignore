@@ -2,12 +2,7 @@
 .atl/
 odd/
 
-# Python
-.venv/
 .env
-__pycache__/
-*.py[cod]
-.pytest_cache/
 *.sqlite3
 db.sqlite3
 

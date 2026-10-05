@@ -1,28 +1,27 @@
-VENV := backend/.venv
-PY := $(VENV)/bin/python
-
-.PHONY: setup dev-backend dev-frontend test test-contract migrate
+.PHONY: setup dev-backend dev-frontend test test-contract migrate seed
 
 setup:
-	python3 -m venv $(VENV)
-	$(VENV)/bin/pip install -r backend/requirements.txt
+	cd backend && yarn install
 	cd frontend && yarn install
 	cd contract-tests && yarn install
-	cd backend-nest && yarn install
 
 dev-backend:
-	cd backend && .venv/bin/python manage.py runserver 8000
+	cd backend && PORT=8000 yarn start:dev
 
 dev-frontend:
 	cd frontend && yarn dev
 
 test:
-	cd backend && .venv/bin/python -m pytest
+	cd backend && yarn test
 	cd frontend && yarn test
+	cd contract-tests && yarn test
 
-# Black-box HTTP contract suite; CONTRACT_BACKEND=django (default) or nest.
+# Black-box HTTP contract suite; boots backend/ on a temp DB.
 test-contract:
 	cd contract-tests && yarn test
 
 migrate:
-	cd backend && .venv/bin/python manage.py migrate
+	cd backend && yarn build && yarn migrate
+
+seed:
+	cd backend && yarn build && yarn seed

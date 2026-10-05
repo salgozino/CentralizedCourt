@@ -6,15 +6,15 @@ be able to resume from here.
 ## Current state
 
 - Project brief, acceptance list and logs created.
-- Scaffold done: Django + django-ninja backend and Vite + React 18 + Tailwind v4 +
+- Scaffold done: NestJS + TypeORM backend (migrated from Django, see `odd/tasks/backend-nestjs.md`) and Vite + React 18 + Tailwind v4 +
   kleros-ui frontend.
 - Slice 1 (login + roles) implemented on branch `feat/slice1/gentle`:
-  - `accounts` app: custom `User` (email login, `is_admin`/`is_creator`/`is_juror`),
-    `LoginCode` (hashed, single-use, 10 min TTL), idempotent `manage.py seed`.
+  - Entities: `User` (email login, `is_admin`/`is_creator`/`is_juror`),
+    `LoginCode` (hashed, single-use, 10 min TTL), idempotent seed (`make seed`).
   - API: `/api/auth/request-code`, `/api/auth/verify`, `/api/auth/logout`, `/api/me`,
     `/api/admin/users`, `/api/admin/users/{id}/roles` (session auth + CSRF).
   - UI: login (email -> code), home with per-role sections, admin role management.
-  - `make test`: 70 backend + 19 frontend tests pass. Live API run verified all 9 users.
+  - `make test`: 73 backend (Jest) + 19 frontend + 63 contract tests pass. Live API run verified all 9 users.
   - Native review: all work-unit commits approved except `746b34c` (escalated for the
     login brute-force; superseded by the per-user throttle in `e76547f`, approved).
 - Agent instructions in `AGENTS.md` (how to set up, run and test the app).
@@ -36,10 +36,10 @@ be able to resume from here.
   (client IP, 15-minute window): 10 code requests (known or unknown email) and 20 failed
   verifications. Knowing an email is not enough to block or invalidate that user's login.
   Per-IP limits use the client IP forwarded by the trusted Vite proxy (`X-Forwarded-For`,
-  last entry); clients on the same machine still share one IP. `TRUSTED_PROXY_IPS` must list
-  the real proxy in any other deployment. A distributed attacker with many IPs is not covered.
-- Malformed JSON is remapped from ninja's 400 to 422 by matching ninja's error message
-  (`config/urls.py`); re-check after ninja upgrades.
+  last entry); clients on the same machine still share one IP. `TRUSTED_PROXY_IPS`
+  (`backend/src/http/client-ip.ts`) must list the real proxy in any other deployment. A distributed attacker with many IPs is not covered.
+- Malformed JSON bodies are answered with 422 `{"detail": "Cannot parse request body"}` by
+  the Nest body-parser error handling (`backend/src/app.ts`); the contract suite covers it.
 
 ## Advisory review follow-ups (non-blocking)
 
@@ -47,5 +47,4 @@ be able to resume from here.
   exceed them), `used_at` reused for revocation, `LoginEvent` rows are never purged.
 - Frontend: admin role toggles can lose updates on fast clicks, `App` masks backend errors
   on `getMe`, logout failure is silent; login/admin error paths lack tests.
-- Accounts: seed is not atomic; email case handling differs between manager and
-  `get_or_create`.
+- Accounts: seed is not atomic.

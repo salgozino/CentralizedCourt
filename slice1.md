@@ -15,7 +15,7 @@ for commands. Cases, juror draws and voting are out of scope for this slice.
 
 ## Seed
 
-`cd backend && .venv/bin/python manage.py seed` creates these users. It must be
+`make seed` creates these users. It must be
 idempotent (running it twice does not duplicate users or change roles).
 
 | Email                  | Roles               |
@@ -37,14 +37,14 @@ Passwordless, email + one-time code, no external services.
 1. The user submits their email. If the user exists, a 6-digit code is generated,
    stored in the database and printed to the backend console (stdout or stderr) as
    a single line: `LOGIN CODE <email> <code>`.
-2. The user submits email + code. On success a Django session is created (session
+2. The user submits email + code. On success a server-side session is created (session
    cookie).
 3. A code is single-use and expires after 10 minutes. A code is only valid for the
    email it was issued to.
 
 ## API contract
 
-All endpoints under `/api/`. Authentication is the Django session cookie.
+All endpoints under `/api/`. Authentication is the server-side session cookie.
 
 | Method | Path                         | Body                    | Success                                       | Errors                                                     |
 | ------ | ---------------------------- | ----------------------- | --------------------------------------------- | ---------------------------------------------------------- |
@@ -81,6 +81,6 @@ All endpoints under `/api/`. Authentication is the Django session cookie.
 - [ ] The admin gives `user@example.com` the `creator` and `juror` roles; after
       that `/api/me` for that user returns `["creator", "juror", "user"]` and the UI
       shows both sections.
-- [ ] Custom `AUTH_USER_MODEL` defined before the first migration.
+- [ ] The `User` entity (email login, role flags) exists in the initial TypeORM migration.
 - [ ] Backend tests cover the contract above; `make test` passes.
 - [ ] Your work will also be checked by additional tests against this contract.

@@ -1,26 +1,24 @@
 # contract-tests
 
 Black-box HTTP contract suite for the CentralizedCourt API under `/api/`. It only speaks HTTP
-and reads the backend process stdout, so the same suite verifies the Django backend today and
-the NestJS reimplementation later.
+and reads the backend process stdout. It was written against the original Django backend (the
+oracle, commit `38a27a1`) and now verifies the NestJS backend in `backend/`.
 
 ## Running
 
 ```sh
-make setup           # installs contract-tests deps too (and the Django venv)
-make test-contract   # CONTRACT_BACKEND=django by default
+make setup           # installs contract-tests deps too
+make test-contract
 ```
 
-`CONTRACT_BACKEND` selects the backend: `django` (default) or `nest`. For `nest` the harness runs
-`yarn build` in `backend-nest/` once, then `node dist/cli/migrate.js`, `node dist/cli/seed.js` and
-`node dist/main.js` with `PORT`, `DB_PATH` (temp DB) and a dummy `SECRET_KEY` in the child env.
-The readiness probe accepts any HTTP status (a 404 from `/api/me` counts as up), so it works
-before the Nest routes exist.
+The harness runs `yarn build` in `backend/` once, then `node dist/cli/migrate.js`,
+`node dist/cli/seed.js` and `node dist/main.js` with `PORT`, `DB_PATH` (temp DB) and a dummy
+`SECRET_KEY` in the child env. The readiness probe accepts any HTTP status.
 
 ## How it works
 
 - `src/globalSetup.ts` starts the backend once per Jest run (`--runInBand`) on a free port with a
-  fresh temp SQLite DB (`DJANGO_DB_PATH` / `DB_PATH`), runs `migrate` and `seed` first, and waits until
+  fresh temp SQLite DB (`DB_PATH`), runs `migrate` and `seed` first, and waits until
   `/api/me` answers. `src/globalTeardown.ts` stops it and removes the temp dir.
 - Backend stdout goes to a file; `src/stdout.ts` reads `LOGIN CODE <email> <code>` lines from it
   (latest code for an email, optionally only what was printed after a mark).
@@ -31,12 +29,8 @@ before the Nest routes exist.
 - Isolation: every `Client` gets a distinct IP (`newIp()`, namespaced per test file), so tests
   that consume IP caps never interfere. Admin tests that change roles restore the seed roles
   afterwards. Nothing reads or writes `backend/.env` or the dev DB.
-- Django only: `django-harness/contract_settings.py` re-exports the project settings and adds
-  `ALLOWED_HOSTS`, so the backend runs with `DJANGO_DEBUG=false` like production. DEBUG must be
-  off: with DEBUG on, ninja appends parser details to the malformed-JSON message and the
-  422 mapping in `config/urls.py` stops matching (400 is returned instead).
 
-## Observed Django responses (the contract the Nest backend must match)
+## Observed Django responses (the contract the backend must match)
 
 | Case | Status | Body |
 | --- | --- | --- |

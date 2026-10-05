@@ -57,34 +57,8 @@ interface BackendSpec {
   prepare: string[][];
 }
 
-function startDjango(port: number, dbPath: string): BackendSpec {
+function startBackendSpec(port: number, dbPath: string): BackendSpec {
   const cwd = path.join(REPO_ROOT, 'backend');
-  const python = path.join(cwd, '.venv', 'bin', 'python');
-  if (!fs.existsSync(python)) throw new Error(`Missing ${python}; run \`make setup\` first.`);
-  const env = {
-    ...process.env,
-    DJANGO_SECRET_KEY: SECRET,
-    DJANGO_DEBUG: 'false',
-    // Overlay that only adds ALLOWED_HOSTS, so the suite can run with DEBUG off like production.
-    DJANGO_SETTINGS_MODULE: 'contract_settings',
-    PYTHONPATH: path.join(__dirname, '..', 'django-harness'),
-    DJANGO_DB_PATH: dbPath,
-    PYTHONUNBUFFERED: '1',
-  };
-  return {
-    cmd: python,
-    args: ['manage.py', 'runserver', '--noreload', `127.0.0.1:${port}`],
-    cwd,
-    env,
-    prepare: [
-      ['manage.py', 'migrate', '--noinput'],
-      ['manage.py', 'seed'],
-    ],
-  };
-}
-
-function startNest(port: number, dbPath: string): BackendSpec {
-  const cwd = path.join(REPO_ROOT, 'backend-nest');
   if (!fs.existsSync(path.join(cwd, 'node_modules'))) throw new Error(`Missing ${cwd}/node_modules; run \`make setup\` first.`);
   // Build once per run, so the contract always exercises the current sources.
   runToCompletion('yarn', ['build'], cwd, process.env);
@@ -99,17 +73,14 @@ function startNest(port: number, dbPath: string): BackendSpec {
 }
 
 export async function startBackend(): Promise<RunningBackend> {
-  const kind = process.env.CONTRACT_BACKEND ?? 'django';
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'contract-tests-'));
   const dbPath = path.join(tmpDir, 'db.sqlite3');
   const stdoutFile = path.join(tmpDir, 'stdout.log');
   const stderrFile = path.join(tmpDir, 'stderr.log');
   const port = await freePort();
 
-  if (kind !== 'django' && kind !== 'nest') throw new Error(`Unknown CONTRACT_BACKEND "${kind}" (expected django or nest)`);
-
   try {
-    const spec = kind === 'nest' ? startNest(port, dbPath) : startDjango(port, dbPath);
+    const spec = startBackendSpec(port, dbPath);
     for (const args of spec.prepare) runToCompletion(spec.cmd, args, spec.cwd, spec.env);
 
     const out = fs.openSync(stdoutFile, 'w');
