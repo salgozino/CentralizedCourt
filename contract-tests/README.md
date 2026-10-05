@@ -11,13 +11,16 @@ make setup           # installs contract-tests deps too (and the Django venv)
 make test-contract   # CONTRACT_BACKEND=django by default
 ```
 
-`CONTRACT_BACKEND` selects the backend: `django` (default) or `nest` (stub, not implemented yet:
-fill in `startNest` in `src/backend.ts`).
+`CONTRACT_BACKEND` selects the backend: `django` (default) or `nest`. For `nest` the harness runs
+`yarn build` in `backend-nest/` once, then `node dist/cli/migrate.js`, `node dist/cli/seed.js` and
+`node dist/main.js` with `PORT`, `DB_PATH` (temp DB) and a dummy `SECRET_KEY` in the child env.
+The readiness probe accepts any HTTP status (a 404 from `/api/me` counts as up), so it works
+before the Nest routes exist.
 
 ## How it works
 
 - `src/globalSetup.ts` starts the backend once per Jest run (`--runInBand`) on a free port with a
-  fresh temp SQLite DB (`DJANGO_DB_PATH`), runs `migrate` and `seed` first, and waits until
+  fresh temp SQLite DB (`DJANGO_DB_PATH` / `DB_PATH`), runs `migrate` and `seed` first, and waits until
   `/api/me` answers. `src/globalTeardown.ts` stops it and removes the temp dir.
 - Backend stdout goes to a file; `src/stdout.ts` reads `LOGIN CODE <email> <code>` lines from it
   (latest code for an email, optionally only what was printed after a mark).

@@ -8,6 +8,7 @@ setup:
 	$(VENV)/bin/pip install -r backend/requirements.txt
 	cd frontend && yarn install
 	cd contract-tests && yarn install
+	cd backend-nest && yarn install
 
 dev-backend:
 	cd backend && .venv/bin/python manage.py runserver 8000

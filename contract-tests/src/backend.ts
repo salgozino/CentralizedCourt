@@ -49,7 +49,15 @@ async function waitUntilUp(baseUrl: string, child: ChildProcess, stderrFile: str
   throw new Error(`Backend did not respond within 30s:\n${fs.readFileSync(stderrFile, 'utf8')}`);
 }
 
-function startDjango(port: number, dbPath: string): { cmd: string; args: string[]; cwd: string; env: NodeJS.ProcessEnv; prepare: string[][] } {
+interface BackendSpec {
+  cmd: string;
+  args: string[];
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+  prepare: string[][];
+}
+
+function startDjango(port: number, dbPath: string): BackendSpec {
   const cwd = path.join(REPO_ROOT, 'backend');
   const python = path.join(cwd, '.venv', 'bin', 'python');
   if (!fs.existsSync(python)) throw new Error(`Missing ${python}; run \`make setup\` first.`);
@@ -75,9 +83,19 @@ function startDjango(port: number, dbPath: string): { cmd: string; args: string[
   };
 }
 
-function startNest(): never {
-  // Filled in once backend-nest/ exists (Task 2+): migrate, seed, then start on PORT with DB at the temp path.
-  throw new Error('CONTRACT_BACKEND=nest is not implemented yet');
+function startNest(port: number, dbPath: string): BackendSpec {
+  const cwd = path.join(REPO_ROOT, 'backend-nest');
+  if (!fs.existsSync(path.join(cwd, 'node_modules'))) throw new Error(`Missing ${cwd}/node_modules; run \`make setup\` first.`);
+  // Build once per run, so the contract always exercises the current sources.
+  runToCompletion('yarn', ['build'], cwd, process.env);
+  const env = { ...process.env, SECRET_KEY: SECRET, DEBUG: 'false', PORT: String(port), DB_PATH: dbPath };
+  return {
+    cmd: process.execPath,
+    args: ['dist/main.js'],
+    cwd,
+    env,
+    prepare: [['dist/cli/migrate.js'], ['dist/cli/seed.js']],
+  };
 }
 
 export async function startBackend(): Promise<RunningBackend> {
@@ -88,11 +106,10 @@ export async function startBackend(): Promise<RunningBackend> {
   const stderrFile = path.join(tmpDir, 'stderr.log');
   const port = await freePort();
 
-  if (kind === 'nest') startNest();
-  if (kind !== 'django') throw new Error(`Unknown CONTRACT_BACKEND "${kind}" (expected django or nest)`);
+  if (kind !== 'django' && kind !== 'nest') throw new Error(`Unknown CONTRACT_BACKEND "${kind}" (expected django or nest)`);
 
   try {
-    const spec = startDjango(port, dbPath);
+    const spec = kind === 'nest' ? startNest(port, dbPath) : startDjango(port, dbPath);
     for (const args of spec.prepare) runToCompletion(spec.cmd, args, spec.cwd, spec.env);
 
     const out = fs.openSync(stdoutFile, 'w');
