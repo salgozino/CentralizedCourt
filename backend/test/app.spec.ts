@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import request from 'supertest';
-import { configureApp } from '../src/app';
+import { APP_OPTIONS, configureApp } from '../src/app';
 import { tempDbPath } from './helpers';
 
 describe('app bootstrap', () => {
@@ -18,7 +18,7 @@ describe('app bootstrap', () => {
     // ConfigModule.forRoot validates while app.module is imported, so env must be set first.
     const { AppModule } = await import('../src/app.module');
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication(APP_OPTIONS);
     configureApp(app);
     await app.init();
   });

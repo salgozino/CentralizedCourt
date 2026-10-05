@@ -30,7 +30,7 @@ function toDetail(issue: z.core.$ZodIssue, body: unknown): ValidationDetail {
   const loc = ['body', 'payload', ...issue.path.map((p) => (typeof p === 'symbol' ? String(p) : p))];
   if (issue.code === 'invalid_type') {
     if (valueAt(body, issue.path) === undefined) return { type: 'missing', loc, msg: 'Field required' };
-    const known = TYPE_MESSAGES[issue.expected === 'number' && /int/.test(issue.message) ? 'int' : issue.expected];
+    const known = TYPE_MESSAGES[issue.expected]; // zod reports `expected: 'int'` itself for non-integer numbers
     if (known) return { loc, ...known };
   }
   if (issue.code === 'invalid_value') {

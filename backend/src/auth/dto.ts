@@ -3,6 +3,8 @@ import { User } from '../entities';
 
 export const RequestCodeIn = z.object({ email: z.string() });
 export const VerifyIn = z.object({ email: z.string(), code: z.string() });
+export type RequestCodeIn = z.infer<typeof RequestCodeIn>;
+export type VerifyIn = z.infer<typeof VerifyIn>;
 
 export interface UserOut {
   id: number;

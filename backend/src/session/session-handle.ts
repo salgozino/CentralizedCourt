@@ -11,7 +11,11 @@ export type SessionData = Record<string, unknown>;
  */
 export class SessionHandle implements SessionStore {
   modified = false;
-  /** Keys whose rows must be deleted on commit (flushed or rotated away). */
+  /** Only what this request set; committed onto the current row so overlapping requests do not clobber each other. */
+  changes: SessionData = {};
+  /** Stored key this request asked to replace with a fresh one, keeping the row's data. */
+  rotatedFrom: string | null = null;
+  /** Keys whose rows must be deleted on commit (flushed). */
   readonly discarded: string[] = [];
 
   constructor(
@@ -28,6 +32,7 @@ export class SessionHandle implements SessionStore {
 
   set(key: string, value: unknown): void {
     this.data[key] = value;
+    this.changes[key] = value;
     this.modified = true;
   }
 
@@ -37,16 +42,19 @@ export class SessionHandle implements SessionStore {
 
   /** New key, same data (session fixation defence on login). */
   cycleKey(): void {
-    if (this.key) this.discarded.push(this.key);
+    this.rotatedFrom = this.key ?? this.rotatedFrom;
     this.key = null;
     this.modified = true;
   }
 
   /** Drops the data and the stored row. */
   flush(): void {
-    if (this.key) this.discarded.push(this.key);
+    const stored = this.key ?? this.rotatedFrom;
+    if (stored) this.discarded.push(stored);
     this.key = null;
+    this.rotatedFrom = null;
     this.data = {};
+    this.changes = {};
     this.modified = true;
   }
 }

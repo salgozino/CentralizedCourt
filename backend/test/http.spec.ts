@@ -1,14 +1,20 @@
-import { Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { DataSource } from 'typeorm';
+import { z } from 'zod';
 import { Session, User } from '../src/entities';
 import { CsrfGuard } from '../src/auth/csrf.guard';
 import { SessionAuthGuard } from '../src/auth/session-auth.guard';
+import { ZodBodyPipe } from '../src/http/validation';
 import { SessionModule } from '../src/session/session.module';
+import { SessionService } from '../src/session/session.service';
 import { Browser, BootedApp, bootApp } from './helpers';
 
 const JUROR1 = 'juror1@example.com';
 
-/** Stands in for the admin routes of task 4: session auth first, then CSRF. */
+const EchoIn = z.object({ name: z.string() });
+
+/** Stands in for the admin routes: session auth first, then CSRF, then body validation. */
 @Controller('probe')
 @UseGuards(SessionAuthGuard, CsrfGuard)
 class ProbeController {
@@ -16,6 +22,55 @@ class ProbeController {
   write() {
     return { ok: true };
   }
+
+  @Post('echo')
+  echo(@Body(new ZodBodyPipe(EchoIn)) body: z.infer<typeof EchoIn>) {
+    return body;
+  }
+}
+
+/**
+ * Unguarded route that changes one session key, then waits for the test to let it finish. Holding
+ * several requests between "session loaded" and "response ready" makes request overlap deterministic.
+ */
+@Controller('session-probe')
+class SessionProbeController {
+  static arrivals = 0;
+  static release: Promise<void> = Promise.resolve();
+
+  constructor(private readonly sessions: SessionService) {}
+
+  @Post(':name')
+  async touch(@Req() req: Request, @Param('name') name: string) {
+    const session = await this.sessions.get(req);
+    session.set(name, true);
+    SessionProbeController.arrivals++;
+    await SessionProbeController.release;
+    return { ok: true };
+  }
+}
+
+/** Starts holding session-probe requests; call the returned function to let them finish. */
+function holdSessionProbes(): () => void {
+  let open!: () => void;
+  SessionProbeController.arrivals = 0;
+  SessionProbeController.release = new Promise<void>((resolve) => (open = resolve));
+  return open;
+}
+
+async function untilArrivals(count: number): Promise<void> {
+  while (SessionProbeController.arrivals < count) await new Promise((resolve) => setTimeout(resolve, 5));
+}
+
+/** Makes every write to the sessions table fail, to simulate a database error while a session is saved. */
+async function breakSessionWrites(ds: DataSource): Promise<() => Promise<void>> {
+  const abort = "BEGIN SELECT RAISE(ABORT, 'sessions are read-only'); END";
+  await ds.query(`CREATE TRIGGER sessions_no_insert BEFORE INSERT ON sessions ${abort}`);
+  await ds.query(`CREATE TRIGGER sessions_no_update BEFORE UPDATE ON sessions ${abort}`);
+  return async () => {
+    await ds.query('DROP TRIGGER sessions_no_insert');
+    await ds.query('DROP TRIGGER sessions_no_update');
+  };
 }
 
 describe('auth over HTTP', () => {
@@ -23,7 +78,7 @@ describe('auth over HTTP', () => {
   let ds: DataSource;
 
   beforeAll(async () => {
-    booted = await bootApp({ imports: [SessionModule], controllers: [ProbeController] });
+    booted = await bootApp({ imports: [SessionModule], controllers: [ProbeController, SessionProbeController] });
     ds = booted.dataSource;
   });
   afterAll(() => booted.close());
@@ -57,11 +112,23 @@ describe('auth over HTTP', () => {
       expect(await ds.getRepository(Session).existsBy({ id: after })).toBe(true);
     });
 
-    it('sets no cookie when request-code does not touch the session (unknown email)', async () => {
-      const b = new Browser(booted);
-      const res = await b.post('/api/auth/request-code', { email: 'nobody@example.com' });
+    it('sets the same sessionid cookie for known and unknown emails on request-code', async () => {
+      const attributes = (raw: string) => raw.replace(/^sessionid=[^;]*/, '').replace(/expires=[^;]*/i, '');
+      const known = new Browser(booted);
+      const unknown = new Browser(booted);
+      expect((await known.post('/api/auth/request-code', { email: JUROR1 })).status).toBe(200);
+      const res = await unknown.post('/api/auth/request-code', { email: 'nobody@example.com' });
       expect(res.status).toBe(200);
-      expect(res.headers['set-cookie']).toBeUndefined();
+      expect(res.body).toEqual({ detail: 'If the email exists, a code was sent.' });
+      expect(unknown.jar.get('sessionid')).toMatch(/^[A-Za-z0-9_-]{32}$/);
+      expect(attributes(unknown.rawCookies.get('sessionid')!)).toBe(attributes(known.rawCookies.get('sessionid')!));
+    });
+
+    it('keeps answering unknown emails like known ones when a session cookie is already present', async () => {
+      const b = new Browser(booted);
+      await b.post('/api/auth/request-code', { email: 'nobody@example.com' });
+      const res = await b.post('/api/auth/request-code', { email: 'nobody@example.com' });
+      expect(res.headers['set-cookie']).toBeDefined();
     });
 
     it('sets csrftoken on GET /api/me, reusing the existing secret', async () => {
@@ -87,6 +154,71 @@ describe('auth over HTTP', () => {
       const res = await new Browser(booted).post('/api/auth/logout');
       expect(res.status).toBe(200);
       expect(res.headers['set-cookie']).toBeUndefined();
+    });
+  });
+
+  describe('session writes', () => {
+    it('keeps the changes of two overlapping requests on the same session', async () => {
+      const b = await new Browser(booted).login(JUROR1);
+      const key = b.jar.get('sessionid')!;
+      const open = holdSessionProbes();
+      const both = Promise.all([b.post('/api/session-probe/first'), b.post('/api/session-probe/second')]);
+      await untilArrivals(2);
+      open();
+      expect((await both).map((r) => r.status)).toEqual([201, 201]);
+      const row = await ds.getRepository(Session).findOneByOrFail({ id: key });
+      expect(row.data).toMatchObject({ first: true, second: true });
+      expect(typeof row.data.userId).toBe('number');
+    });
+
+    it('does not resurrect a session that logout deleted while another request was in flight', async () => {
+      const b = await new Browser(booted).login(JUROR1);
+      const key = b.jar.get('sessionid')!;
+      const open = holdSessionProbes();
+      const slow = b.post('/api/session-probe/late');
+      await untilArrivals(1);
+      expect((await b.post('/api/auth/logout', undefined, { cookies: { sessionid: key } })).status).toBe(200);
+      open();
+      expect((await slow).status).toBe(201);
+      expect(await ds.getRepository(Session).existsBy({ id: key })).toBe(false);
+      expect((await b.get('/api/me', { cookies: { sessionid: key } })).status).toBe(401);
+    });
+
+    it('gives a rotated session a fresh row, never the old key, when the old row vanished meanwhile', async () => {
+      const b = await new Browser(booted).login(JUROR1);
+      const oldKey = b.jar.get('sessionid')!;
+      const sessions = booted.app.get(SessionService);
+      const req = { headers: { cookie: `sessionid=${oldKey}` } } as Request;
+      const cookies: string[] = [];
+      const res = { headersSent: false, append: (_name: string, value: string) => cookies.push(value) } as unknown as Response;
+      const handle = await sessions.get(req);
+      handle.cycleKey();
+      handle.set('rotated', true);
+      await ds.getRepository(Session).delete({ id: oldKey });
+      await sessions.commit(req, res);
+      const newKey = /^sessionid=([^;]+)/.exec(cookies[0])![1];
+      expect(newKey).not.toBe(oldKey);
+      expect(await ds.getRepository(Session).existsBy({ id: oldKey })).toBe(false);
+      expect((await ds.getRepository(Session).findOneByOrFail({ id: newKey })).data).toEqual({ rotated: true });
+    });
+
+    it('leaves the code usable when the session cannot be saved on verify', async () => {
+      const b = new Browser(booted);
+      const code = await b.requestCode(JUROR1);
+      const cookies = { sessionid: b.jar.get('sessionid')! };
+      const restore = await breakSessionWrites(ds);
+      let failed;
+      try {
+        failed = await b.verify(JUROR1, code);
+      } finally {
+        await restore();
+      }
+      expect(failed.status).toBe(500);
+      expect(failed.body).toEqual({ detail: 'Internal Server Error' });
+      expect(([failed.headers['set-cookie'] ?? []].flat() as string[]).filter((c) => c.startsWith('sessionid='))).toEqual([]);
+      const retry = await b.post('/api/auth/verify', { email: JUROR1, code }, { cookies });
+      expect(retry.status).toBe(200);
+      expect(retry.body.email).toBe(JUROR1);
     });
   });
 
@@ -223,10 +355,48 @@ describe('auth over HTTP', () => {
       expect(res.body).toEqual({ detail: 'Not Found' });
     });
 
-    it('orders 401 before 422 on guarded routes', async () => {
-      const res = await new Browser(booted).get('/api/me');
+    it('answers an invalid body with 401 when anonymous and 422 when authenticated', async () => {
+      const anonymous = await new Browser(booted).post('/api/probe/echo', { name: 5 });
+      expect(anonymous.status).toBe(401);
+      expect(anonymous.body).toEqual({ detail: 'Unauthorized' });
+      const authenticated = await (await new Browser(booted).login(JUROR1)).post('/api/probe/echo', { name: 5 });
+      expect(authenticated.status).toBe(422);
+      expect(authenticated.body.detail[0].loc).toEqual(['body', 'payload', 'name']);
+    });
+
+    it('keeps the {detail} shape for body-parser errors other than malformed JSON', async () => {
+      const b = new Browser(booted);
+      const tooLarge = await b.post('/api/auth/request-code', undefined, { raw: JSON.stringify({ email: 'x'.repeat(200_000) }) });
+      expect(tooLarge.status).toBe(413);
+      expect(tooLarge.body).toEqual({ detail: 'request entity too large' });
+      const charset = await b.post('/api/auth/request-code', undefined, {
+        raw: '{}',
+        headers: { 'Content-Type': 'application/json; charset=latin1' },
+      });
+      expect(charset.status).toBe(415);
+      expect(charset.body).toEqual({ detail: 'unsupported charset "LATIN1"' });
+      const encoding = await b.post('/api/auth/request-code', undefined, { raw: '{}', headers: { 'Content-Encoding': 'compress' } });
+      expect(encoding.status).toBe(415);
+      expect(encoding.body).toEqual({ detail: 'unsupported content encoding "compress"' });
+    });
+  });
+
+  describe('verify failures', () => {
+    it('answers a wrong code with 401 {detail} and leaves the session and the real code alone', async () => {
+      const b = new Browser(booted);
+      const code = await b.requestCode(JUROR1);
+      const wrong = String((Number(code) + 1) % 1_000_000).padStart(6, '0');
+      const res = await b.verify(JUROR1, wrong);
       expect(res.status).toBe(401);
-      expect(res.body).toEqual({ detail: 'Unauthorized' });
+      expect(res.body).toEqual({ detail: 'Invalid or expired code' });
+      expect(res.headers['set-cookie']).toBeUndefined();
+      expect((await b.verify(JUROR1, code)).status).toBe(200);
+    });
+
+    it('answers an unknown email with the same 401', async () => {
+      const res = await new Browser(booted).verify('nobody@example.com', '000000');
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ detail: 'Invalid or expired code' });
     });
   });
 });

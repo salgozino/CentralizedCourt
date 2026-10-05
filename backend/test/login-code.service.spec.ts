@@ -149,6 +149,12 @@ describe('LoginCodeService', () => {
       expect(await requestCode(JUROR1, '10.0.0.66', new MemorySession())).toBeNull();
     });
 
+    it('holds the request cap under parallel requests from one IP', async () => {
+      await Promise.all(Array.from({ length: 3 * MAX_CODE_REQUESTS_PER_IP }, () => service.issue(JUROR1, '10.0.0.66', new MemorySession())));
+      expect(await events().count({ where: { ip: '10.0.0.66', kind: 'request' } })).toBe(MAX_CODE_REQUESTS_PER_IP);
+      expect(await codes().count()).toBe(MAX_CODE_REQUESTS_PER_IP);
+    });
+
     it('lets the request cap window expire', async () => {
       for (let i = 0; i < MAX_CODE_REQUESTS_PER_IP; i++) await requestCode(JUROR1, '10.0.0.66', new MemorySession());
       expect(await requestCode(JUROR1, '10.0.0.66', new MemorySession())).toBeNull();
@@ -161,9 +167,9 @@ describe('LoginCodeService', () => {
     it('returns the user, marks the code used and drops its id from the session', async () => {
       const session = new MemorySession();
       const code = await requestCode(JUROR1, '10.0.0.1', session);
-      const user = await service.verify(` ${JUROR1.toUpperCase()} `, ` ${code} `, '10.0.0.1', session);
-      expect(user?.email).toBe(JUROR1);
-      expect(user?.roles).toEqual(['juror', 'user']);
+      const claim = await service.verify(` ${JUROR1.toUpperCase()} `, ` ${code} `, '10.0.0.1', session);
+      expect(claim?.user.email).toBe(JUROR1);
+      expect(claim?.user.roles).toEqual(['juror', 'user']);
       expect((await codes().findOneByOrFail({})).usedAt).not.toBeNull();
       expect(session.get<number[]>(SESSION_CODE_IDS_KEY)).toEqual([]);
       expect(await service.verify(JUROR1, code!, '10.0.0.1', session)).toBeNull();
@@ -224,6 +230,22 @@ describe('LoginCodeService', () => {
       expect(await events().count({ where: { kind: 'failure' } })).toBe(MAX_FAILED_VERIFICATIONS_PER_IP);
       const other = new MemorySession();
       expect(await service.verify(JUROR1, (await requestCode(JUROR1, '10.0.0.1', other))!, '10.0.0.1', other)).not.toBeNull();
+    });
+
+    it('holds the failure cap under parallel guesses from one IP', async () => {
+      await Promise.all(
+        Array.from({ length: 2 * MAX_FAILED_VERIFICATIONS_PER_IP }, (_, i) =>
+          service.verify(`nobody${i}@example.com`, '000000', '10.0.0.66', new MemorySession()),
+        ),
+      );
+      expect(await events().count({ where: { kind: 'failure' } })).toBe(MAX_FAILED_VERIFICATIONS_PER_IP);
+    });
+
+    it('does not count a successful verification as a failure', async () => {
+      const session = new MemorySession();
+      const code = await requestCode(JUROR1, '10.0.0.1', session);
+      expect(await service.verify(JUROR1, code!, '10.0.0.1', session)).not.toBeNull();
+      expect(await events().count({ where: { kind: 'failure' } })).toBe(0);
     });
 
     it('lets exactly one of two concurrent verifications claim a code', async () => {

@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import { configureApp } from '../src/app';
+import { APP_OPTIONS, configureApp } from '../src/app';
 import { dataSourceOptions } from '../src/data-source';
 import { seedUsers } from '../src/seed/seed';
 
@@ -49,7 +49,7 @@ export async function bootApp(extra: BootOptions = {}): Promise<BootedApp> {
     imports: [AppModule, ...(extra.imports ?? [])],
     controllers: extra.controllers ?? [],
   }).compile();
-  const app = moduleRef.createNestApplication();
+  const app = moduleRef.createNestApplication(APP_OPTIONS);
   configureApp(app);
   await app.init();
   const dataSource = app.get(DataSource);
@@ -105,7 +105,10 @@ export class Browser {
     if (cookies.size) req = req.set('Cookie', [...cookies].map(([k, v]) => `${k}=${v}`).join('; '));
     if ((opts.csrf ?? method !== 'get') && this.jar.has('csrftoken')) req = req.set('X-CSRFToken', this.jar.get('csrftoken')!);
     for (const [name, value] of Object.entries(opts.headers ?? {})) req = req.set(name, value);
-    if (opts.raw !== undefined) req = req.set('Content-Type', 'application/json').send(opts.raw);
+    if (opts.raw !== undefined) {
+      if (!Object.keys(opts.headers ?? {}).some((name) => name.toLowerCase() === 'content-type')) req = req.set('Content-Type', 'application/json');
+      req = req.send(opts.raw);
+    }
     else if (json !== undefined) req = req.send(json as object);
     const res = await req;
     this.absorb((res.headers['set-cookie'] as unknown as string[] | undefined) ?? []);

@@ -5,11 +5,13 @@ import type { Request, Response } from 'express';
 import { In, Repository } from 'typeorm';
 import { Session, User } from '../entities';
 import { deleteCookie, requestCookies, setCookie } from '../http/cookies';
-import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, SessionHandle } from './session-handle';
+import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, SessionData, SessionHandle } from './session-handle';
 
 /** Key of the user id inside the session data. */
 export const SESSION_USER_KEY = 'userId';
 
+/** Session data keys are interpolated into JSON paths, so they are restricted to plain identifiers. */
+const DATA_KEY_FORMAT = /^[A-Za-z0-9_]+$/;
 const KEY_FORMAT = /^[A-Za-z0-9_-]{16,64}$/;
 const HANDLES = new WeakMap<Request, Promise<SessionHandle>>();
 
@@ -47,7 +49,11 @@ export class SessionService {
     await this.users.update({ id: user.id }, { lastLogin: new Date() });
   }
 
-  /** Persists what the request changed and sets/clears the cookie. A no-op when the session was never touched. */
+  /**
+   * Persists what the request changed and sets/clears the cookie. A no-op when the session was never touched.
+   * Writes are single atomic statements, so no request can undo another's: only this request's keys are merged
+   * onto the current row, and a row that no longer exists (logout, rotation) is never written back.
+   */
   async commit(req: Request, res: Response): Promise<void> {
     const pending = HANDLES.get(req);
     if (!pending) return;
@@ -59,13 +65,38 @@ export class SessionService {
       if (handle.hadCookie) deleteCookie(res, SESSION_COOKIE);
       return;
     }
-    handle.key ??= randomBytes(24).toString('base64url');
-    await this.sessions.save({
-      id: handle.key,
-      data: handle.data,
-      expiresAt: new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000),
+    const key = await this.persist(handle);
+    if (key) setCookie(res, SESSION_COOKIE, key, { maxAgeSeconds: SESSION_MAX_AGE_SECONDS, httpOnly: true });
+  }
+
+  /** The key the cookie must carry afterwards, or null when the session this request used is gone. */
+  private async persist(handle: SessionHandle): Promise<string | null> {
+    const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
+    if (handle.key) return (await this.merge(handle.key, handle.key, handle.changes, expiresAt)) ? handle.key : null;
+    const key = randomBytes(24).toString('base64url');
+    if (handle.rotatedFrom && (await this.merge(handle.rotatedFrom, key, handle.changes, expiresAt))) return key;
+    // Created in this request, or the rotated row vanished meanwhile: either way the key is new, nothing is resurrected.
+    await this.sessions.save(this.sessions.create({ id: key, data: handle.changes, expiresAt }));
+    return key;
+  }
+
+  /** Applies `changes` to the row `from` (renaming it to `to`) in one statement; false when that row does not exist. */
+  private async merge(from: string, to: string, changes: SessionData, expiresAt: Date): Promise<boolean> {
+    const params: Record<string, string> = {};
+    let data = 'data';
+    Object.entries(changes).forEach(([name, value], i) => {
+      if (!DATA_KEY_FORMAT.test(name)) throw new Error(`Invalid session data key: ${name}`);
+      params[`value${i}`] = JSON.stringify(value);
+      data = `json_set(${data}, '$.${name}', json(:value${i}))`;
     });
-    setCookie(res, SESSION_COOKIE, handle.key, { maxAgeSeconds: SESSION_MAX_AGE_SECONDS, httpOnly: true });
+    const result = await this.sessions
+      .createQueryBuilder()
+      .update()
+      .set({ ...(to === from ? {} : { id: to }), expiresAt, data: () => data })
+      .where('id = :from', { from })
+      .setParameters(params)
+      .execute();
+    return result.affected === 1;
   }
 
   private async load(req: Request): Promise<SessionHandle> {
