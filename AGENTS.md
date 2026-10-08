@@ -4,6 +4,10 @@ Instructions for coding agents working on CentralizedCourt. Read `EXPERIMENT.md`
 the product scope, `ACCEPTANCE.md` for the acceptance criteria and `NEXT_STEPS.md` for
 the current state.
 
+## Development Flow
+
+In this project we always follow strict TDD. That means that first you need to do a commit with the red tests and later a second (or more) commits with the green cases.
+
 ## Stack
 
 - **Backend** (`backend/`): NestJS 11 + TypeORM, SQLite (better-sqlite3). The API is
