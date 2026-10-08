@@ -7,7 +7,7 @@ import { AuthenticatedRequest } from '../auth/session-auth.guard';
 export class AdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const { user } = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    if (!user.isAdmin) throw new ForbiddenException('Admin role required');
+    if (!user.isAdmin) throw new ForbiddenException('Only admins can manage users');
     return true;
   }
 }

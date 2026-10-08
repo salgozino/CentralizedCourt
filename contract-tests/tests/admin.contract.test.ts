@@ -104,7 +104,7 @@ describe('GET /api/admin/users', () => {
   it.each(NON_ADMINS)('is forbidden for %s (403 {detail})', async (email) => {
     const res = await (await new Client().login(email)).get(LIST_URL);
     expect(res.status).toBe(403);
-    expect(res.body).toEqual({ detail: 'Admin role required' });
+    expect(res.body).toEqual({ detail: 'Only admins can manage users' });
   });
 
   it('lists all users ordered by id with sorted roles', async () => {
@@ -133,7 +133,7 @@ describe('PUT /api/admin/users/{id}/roles ordering: 401 > 403 > 422 > 404', () =
     for (const body of [{ roles: ['creator'] }, { roles: ['admin'] }, { nope: 1 }]) {
       const res = await client.put(rolesUrl(idOf('user@example.com')), body);
       expect(res.status).toBe(403);
-      expect(res.body).toEqual({ detail: 'Admin role required' });
+      expect(res.body).toEqual({ detail: 'Only admins can manage users' });
     }
   });
 
