@@ -6,7 +6,11 @@ the current state.
 
 ## Development Flow
 
-In this project we always follow strict TDD. That means that first you need to do a commit with the red tests and later a second (or more) commits with the green cases.
+New features and changes to behavior (endpoints, guards, validation, business rules, UI flows) follow strict TDD:
+first a commit with the red tests, then one or more commits that make them green.
+
+Small self-contained changes (typos, copy or message text, renames, formatting, docs, config tweaks) skip the red
+commit: update the affected tests in the same commit as the change. `make test` and `make lint` must still pass.
 
 ## Stack
 
