@@ -18,7 +18,8 @@ be able to resume from here.
   - UI: login (email -> code), home with per-role sections, admin role management.
   - `make test`: 88 backend (Jest) + 19 frontend (vitest) + 63 contract tests pass.
     Manual browser check against the Nest backend done by the user.
-- Slice 2 (create/list/detail) is implemented end to end; manual browser verification is pending.
+- Slice 2 (create/list/detail) is complete: automated checks pass and the user has validated
+  the frontend and backend.
   - Entity `Case` (`cases` table, migration `CreateCases`): `creatorId`, `title`, `description`,
     `outcomes` (JSON `string[]`), `voteWindowSeconds`, `panelSize` (default 3), `selectionMethod`
     (default `random`), `status` (`awaiting_jurors` | `voting` | `resolved`, starts in
@@ -45,19 +46,16 @@ be able to resume from here.
   - Evidence: `backend/test/cases-read.spec.ts`, `contract-tests/tests/cases.contract.test.ts`,
     `frontend/src/cases-routing.test.tsx`, form tests and API tests. `make test`: 133 backend,
     80 frontend and 66 contract tests pass; `make lint` passes. Frontend production build passes.
-    Pending: manual browser check against the real backend.
+    Manual frontend/backend validation completed and approved by the user.
 - Zero-warning lint gate: husky `pre-commit` (lint-staged: Prettier, ESLint, oxlint) and
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
 
 ## Next
 
-1. Manually verify slice 2 against the real backend: creator/admin creation and listing,
-   direct detail URLs, back/forward navigation, role removal and no-role empty state.
-   For deployments beyond Vite, configure SPA fallback so `/cases/:id` serves `index.html`.
-2. Before slice 3, write the end-to-end acceptance test skeleton (only the HTTP calls) to fix the
+1. Before slice 3, write the end-to-end acceptance test skeleton (only the HTTP calls) to fix the
    API shape of draw and vote.
-3. Slice 3: the draw is an explicit step after creation (also needed for manual selection, after
+2. Slice 3: the draw is an explicit step after creation (also needed for manual selection, after
    asking the juror whether they accept). Each juror's deadline = draw time + `voteWindowSeconds`.
    Validate `panelSize` against the eligible jurors at draw time, not at creation.
 
@@ -96,6 +94,8 @@ be able to resume from here.
   global `core.hooksPath` (e.g. personal `post-checkout` hooks).
 
 ## Advisory review follow-ups (non-blocking)
+
+- For deployments beyond Vite, configure SPA fallback so `/cases/:id` serves `index.html`.
 
 - Auth: `usedAt` reused for revocation, `LoginEvent` rows are never purged. Concurrent
   writes to the same session key are last-write-wins (different keys merge).
