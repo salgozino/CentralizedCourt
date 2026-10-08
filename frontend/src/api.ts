@@ -118,5 +118,5 @@ export async function createCase(input: NewCase): Promise<Case> {
 
 /** Random draw only (manual picker deferred). Errors surface as `ApiError`. */
 export async function drawJurors(caseId: number): Promise<DrawResult> {
-  throw new Error(`drawJurors(${caseId}) is not implemented`);
+  return (await request('POST', `/cases/${caseId}/draw`)).json();
 }
