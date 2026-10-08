@@ -25,7 +25,7 @@ be able to resume from here.
     (default `random`), `status` (`awaiting_jurors` | `voting` | `resolved`, starts in
     `awaiting_jurors`), `result` (nullable), `createdAt`, `updatedAt`.
   - API: `POST /api/cases` (session + CSRF + creator role) answers 201 with the case. Guard order:
-    401 anonymous, 403 CSRF, 403 `Creator role required` (admins always pass), then
+    401 anonymous, 403 CSRF, 403 `Only creators can create cases` (admins always pass), then
     422 validation. Unknown fields (e.g. `status`, `evidence`) are rejected with 422.
   - Validation: title 3-200 chars, description 1-5000 (both trimmed), 2-10 outcomes of 1-100 chars,
     unique ignoring case, `voteWindowSeconds` 60 s to 30 days, `panelSize` odd 1-11.

@@ -1,6 +1,6 @@
 ---
 name: auth-verification
-description: Verification steps to guarantee that an backend endpoint is applying the right permissions
+description: Verification steps to guarantee that a backend endpoint is applying the right permissions. Should be used to validate the guards when adding new endpoints to the backend.
 license: MIT
 compatibility: requires bash, curl, jq and the backend running in a port with its stdout captured to a file
 metadata:
