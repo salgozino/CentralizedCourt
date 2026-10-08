@@ -47,7 +47,7 @@ test('lists cases and navigates to detail and back using real paths', async () =
   expect(await screen.findByRole('heading', { name: 'Refund dispute' })).toBeInTheDocument();
   expect(window.location.pathname).toBe('/cases/42');
   expect(mocks.getCase).toHaveBeenCalledWith('42');
-  expect(screen.getByText(stored.description)).toBeInTheDocument();
+  expect(screen.getByText(stored.description, { normalizer: (text) => text })).toBeInTheDocument();
   for (const text of [
     'Creator ID',
     'Result',
@@ -148,6 +148,14 @@ test('creation redirects to detail and returning refreshes the list', async () =
   expect(screen.getByRole('status')).toHaveTextContent('Case created');
   await user.click(screen.getByRole('link', { name: /Back to cases/ }));
   expect(await screen.findByRole('link', { name: /Refund dispute/ })).toBeInTheDocument();
+});
+
+test('a refreshed detail never trusts a previous session’s cached creation response', async () => {
+  window.history.replaceState({ usr: { created: stored }, key: 'previous-session', idx: 0 }, '', '/cases/42');
+  mocks.getCase.mockRejectedValue(new ApiError(404, 'Hidden'));
+  render(<App />);
+  expect(await screen.findByRole('heading', { name: 'Case not found' })).toBeInTheDocument();
+  expect(screen.queryByText(stored.description, { normalizer: (text) => text })).toBeNull();
 });
 
 test('admin Home retains users management and Cases is a separate page', async () => {

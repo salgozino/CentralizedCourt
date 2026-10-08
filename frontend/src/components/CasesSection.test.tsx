@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import CasesSection from './CasesSection';
+import CasesSection, { NewCase as NewCasePage } from './CasesSection';
 import CaseDetailPage from './CaseDetailPage';
 
 vi.mock('../api', async (orig) => ({
@@ -35,6 +35,7 @@ function setup(canCreate = true) {
     <MemoryRouter initialEntries={['/cases']}>
       <Routes>
         <Route path="/cases/*" element={<CasesSection canCreate={canCreate} onUnauthorized={onUnauthorized} />} />
+        <Route path="/cases/new" element={<NewCasePage canCreate={canCreate} onUnauthorized={onUnauthorized} />} />
         <Route path="/cases/:id" element={<CaseDetailPage onUnauthorized={onUnauthorized} />} />
       </Routes>
     </MemoryRouter>,

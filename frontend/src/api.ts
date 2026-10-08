@@ -99,6 +99,14 @@ export async function setUserRoles(id: number, roles: ExtraRole[]): Promise<User
   return (await request('PUT', `/admin/users/${id}/roles`, { roles })).json();
 }
 
+export async function listCases(): Promise<Case[]> {
+  return (await request('GET', '/cases')).json();
+}
+
+export async function getCase(id: string): Promise<Case> {
+  return (await request('GET', `/cases/${encodeURIComponent(id)}`)).json();
+}
+
 export async function createCase(input: NewCase): Promise<Case> {
   return (await request('POST', '/cases', input)).json();
 }

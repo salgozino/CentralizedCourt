@@ -1,44 +1,25 @@
-import { Button } from '@kleros/ui-components-library';
-import { logout, type User } from '../api';
+import { Link } from 'react-router-dom';
+import type { User } from '../api';
 import AdminUsersSection from './AdminUsersSection';
-import CasesSection from './CasesSection';
+import AuthenticatedPage from './AuthenticatedPage';
 
-type Props = Readonly<{
-  user: User;
-  onLogout: () => void;
-  onUserChange: (user: User) => void;
-}>;
+type Props = Readonly<{ user: User; onLogout: () => void; onUserChange: (user: User) => void }>;
 
 export default function HomePage({ user, onLogout, onUserChange }: Props) {
   const has = (role: string) => user.roles.includes(role);
   const hasPermissions = ['admin', 'creator', 'juror'].some(has);
-
-  async function handleLogout() {
-    try {
-      await logout();
-    } finally {
-      onLogout();
-    }
-  }
-
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8 p-8">
-      <header className="flex items-center justify-between gap-4">
+    <AuthenticatedPage user={user} onLogout={onLogout}>
+      <div className="flex flex-col gap-8">
         <div>
-          <p className="font-semibold">{user.email}</p>
-          <ul aria-label="Roles" className="flex gap-2 text-sm">
-            {user.roles.map((role) => (
-              <li key={role} className="rounded-full border px-2">
-                {role}
-              </li>
-            ))}
-          </ul>
+          <h1 className="text-2xl font-semibold">Home</h1>
+          <p className="mt-2">
+            <Link to="/cases" className="text-klerosUIComponentsPrimaryPurple underline">
+              Go to cases →
+            </Link>
+          </p>
         </div>
-        <Button text="Log out" variant="secondary" onPress={handleLogout} />
-      </header>
-      <main className="flex flex-col gap-8">
         {has('admin') && <AdminUsersSection currentUserId={user.id} onSelfChange={onUserChange} />}
-        <CasesSection canCreate={has('creator') || has('admin')} onUnauthorized={onLogout} />
         {has('juror') && (
           <section aria-labelledby="assignments-heading">
             <h2 id="assignments-heading" className="text-xl font-semibold">
@@ -48,7 +29,7 @@ export default function HomePage({ user, onLogout, onUserChange }: Props) {
           </section>
         )}
         {!hasPermissions && <p>You have no permissions yet. Ask an admin to assign you a role.</p>}
-      </main>
-    </div>
+      </div>
+    </AuthenticatedPage>
   );
 }
