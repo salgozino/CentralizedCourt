@@ -1,13 +1,48 @@
 export type User = { id: number; email: string; roles: string[] };
 export type ExtraRole = 'creator' | 'juror';
 
+export type SelectionMethod = 'random' | 'manual';
+export type CaseStatus = 'awaiting_jurors' | 'voting' | 'resolved';
+
+export type NewCase = {
+  title: string;
+  description: string;
+  outcomes: string[];
+  voteWindowSeconds: number;
+  panelSize: number;
+  selectionMethod: SelectionMethod;
+};
+
+export type Case = NewCase & {
+  id: number;
+  creatorId: number;
+  status: CaseStatus;
+  result: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** One entry of a 422 body: `loc` is e.g. ['body', 'payload', 'outcomes', 1]. */
+export type ValidationIssue = { loc: Array<string | number>; msg: string };
+
 export class ApiError extends Error {
   status: number;
+  /** The `detail` of the error body, when the response had one. */
+  detail: unknown;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detail?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function errorDetail(res: Response): Promise<unknown> {
+  try {
+    return ((await res.json()) as { detail?: unknown }).detail;
+  } catch {
+    return undefined;
   }
 }
 
@@ -31,7 +66,7 @@ async function request(method: string, path: string, body?: unknown): Promise<Re
     credentials: 'same-origin',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!res.ok) throw new ApiError(res.status, `${method} ${path} failed with ${res.status}`);
+  if (!res.ok) throw new ApiError(res.status, `${method} ${path} failed with ${res.status}`, await errorDetail(res));
   return res;
 }
 
@@ -62,4 +97,8 @@ export async function listUsers(): Promise<User[]> {
 
 export async function setUserRoles(id: number, roles: ExtraRole[]): Promise<User> {
   return (await request('PUT', `/admin/users/${id}/roles`, { roles })).json();
+}
+
+export async function createCase(input: NewCase): Promise<Case> {
+  return (await request('POST', '/cases', input)).json();
 }

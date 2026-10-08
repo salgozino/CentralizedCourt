@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { ApiError, getMe, setUserRoles, verifyCode } from './api';
+import { ApiError, createCase, getMe, setUserRoles, verifyCode } from './api';
 
 const fetchMock = vi.fn();
 
@@ -57,4 +57,36 @@ test('non-2xx throws ApiError with status', async () => {
   const err = await verifyCode('a@b.c', '000000').catch((e) => e);
   expect(err).toBeInstanceOf(ApiError);
   expect(err.status).toBe(401);
+});
+
+test('ApiError carries the detail of the error body', async () => {
+  const detail = [{ loc: ['body', 'payload', 'title'], msg: 'Too small' }];
+  fetchMock.mockResolvedValue(json(422, { detail }));
+  const err = await verifyCode('a@b.c', '000000').catch((e) => e);
+  expect(err.detail).toEqual(detail);
+});
+
+test('ApiError tolerates a non-JSON error body', async () => {
+  fetchMock.mockResolvedValue(new Response('Bad gateway', { status: 502 }));
+  const err = await verifyCode('a@b.c', '000000').catch((e) => e);
+  expect(err).toMatchObject({ status: 502, detail: undefined });
+});
+
+test('createCase POSTs the case with CSRF and returns the created case', async () => {
+  const input = {
+    title: 'T',
+    description: 'D',
+    outcomes: ['A', 'B'],
+    voteWindowSeconds: 120,
+    panelSize: 3,
+    selectionMethod: 'random' as const,
+  };
+  const created = { ...input, id: 7, creatorId: 2, status: 'awaiting_jurors', result: null };
+  fetchMock.mockResolvedValue(json(201, created));
+  await expect(createCase(input)).resolves.toEqual(created);
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe('/api/cases');
+  expect(init.method).toBe('POST');
+  expect(new Headers(init.headers).get('X-CSRFToken')).toBe('abc123');
+  expect(JSON.parse(init.body)).toEqual(input);
 });

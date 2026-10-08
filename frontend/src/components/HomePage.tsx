@@ -1,6 +1,7 @@
 import { Button } from '@kleros/ui-components-library';
 import { logout, type User } from '../api';
 import AdminUsersSection from './AdminUsersSection';
+import CasesSection from './CasesSection';
 
 type Props = Readonly<{
   user: User;
@@ -37,14 +38,7 @@ export default function HomePage({ user, onLogout, onUserChange }: Props) {
       </header>
       <main className="flex flex-col gap-8">
         {has('admin') && <AdminUsersSection currentUserId={user.id} onSelfChange={onUserChange} />}
-        {has('creator') && (
-          <section aria-labelledby="cases-heading">
-            <h2 id="cases-heading" className="text-xl font-semibold">
-              Cases
-            </h2>
-            <p>Cases will be available in slice 2.</p>
-          </section>
-        )}
+        <CasesSection canCreate={has('creator') || has('admin')} onUnauthorized={onLogout} />
         {has('juror') && (
           <section aria-labelledby="assignments-heading">
             <h2 id="assignments-heading" className="text-xl font-semibold">

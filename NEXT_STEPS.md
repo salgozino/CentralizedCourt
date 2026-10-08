@@ -18,7 +18,7 @@ be able to resume from here.
   - UI: login (email -> code), home with per-role sections, admin role management.
   - `make test`: 88 backend (Jest) + 19 frontend (vitest) + 63 contract tests pass.
     Manual browser check against the Nest backend done by the user.
-- Slice 2 (create a case), backend only, is in progress:
+- Slice 2 (create a case) is in progress: creation works end to end, the case list does not exist yet.
   - Entity `Case` (`cases` table, migration `CreateCases`): `creatorId`, `title`, `description`,
     `outcomes` (JSON `string[]`), `voteWindowSeconds`, `panelSize` (default 3), `selectionMethod`
     (default `random`), `status` (`awaiting_jurors` | `voting` | `resolved`, starts in
@@ -29,6 +29,16 @@ be able to resume from here.
   - Validation: title 3-200 chars, description 1-5000 (both trimmed), 2-10 outcomes of 1-100 chars,
     unique ignoring case, `voteWindowSeconds` 60 s to 30 days, `panelSize` odd 1-11.
   - Tests: `backend/test/cases.spec.ts` and new cases in `backend/test/migrations.spec.ts`.
+  - UI: a "Cases" section on the home, visible to every user, with a "Case list coming soon"
+    placeholder. "New case" is enabled for creators and admins (disabled with an explanation
+    otherwise) and hidden while the form is open. The form (`CreateCaseForm`) has title,
+    description, 2-10 outcomes (add/remove, no reordering), voting window as days/hours/minutes
+    (default 0/0/2), jurors select (1-11 odd, default 3) and selection radio (default random).
+    Errors show after the first submit and follow edits; 422s map to fields by `loc`, 403 and
+    network/500 errors show a message, 401 returns to the login. On success a card shows the case
+    as returned by the backend. Pure logic in `frontend/src/cases/` (`draft.ts`, `duration.ts`).
+  - Frontend tests: `CasesSection.test.tsx`, `src/cases/*.test.ts`, updates to `HomePage.test.tsx`
+    and `api.test.ts`. Pending: manual browser check against the real backend.
 - Zero-warning lint gate: husky `pre-commit` (lint-staged: Prettier, ESLint, oxlint) and
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
@@ -42,8 +52,8 @@ be able to resume from here.
    - `GET /api/cases/:id`: same visibility rule; a case the user cannot see answers 404 (not 403).
    - No `PATCH`/`DELETE`: cases are immutable.
    - Contract tests for create/list/detail in `contract-tests/`.
-   - UI: creation form (title, description, outcomes, vote window as a duration defaulting to
-     2 min, panel size, selection method; no evidence input), list on the home, case detail.
+   - UI: replace the "Case list coming soon" placeholder with the list, and add the case detail.
+     The creation form is done.
    - Then mark the slice 2 rows of `ACCEPTANCE.md`.
 2. Before slice 3, write the end-to-end acceptance test skeleton (only the HTTP calls) to fix the
    API shape of draw and vote.
@@ -66,6 +76,9 @@ be able to resume from here.
 - Panel larger than the juror pool (e.g. 7 requested, 5 jurors): to be solved later by giving
   jurors multiple votes once the pool grows. Today `panelSize` means number of jurors, one vote
   each. A case can stay in `awaiting_jurors` forever since there is no cancel.
+- The frontend main bundle grew from 231 kB to 449 kB (75 -> 145 kB gzip) with the Kleros
+  `DropdownSelect`, `Radio` and `TextArea` (react-aria). The >500 kB chunk warning on `yarn build`
+  predates this (the library's `url-*` chunk).
 - `backend/test/app.spec.ts` hangs when `backend/.env` defines `SECRET_KEY`: the "missing
   SECRET_KEY" test spawns `src/main.ts`, which loads `.env`, starts the server and never exits.
   It passes in a checkout without `.env`. The test should isolate itself from `.env`.
