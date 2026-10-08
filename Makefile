@@ -1,4 +1,4 @@
-.PHONY: setup lint dev-backend dev-frontend test test-contract migrate seed
+.PHONY: setup lint dev-backend dev-frontend test test-contract test-backend migrate seed
 
 setup:
 	yarn install
@@ -26,6 +26,9 @@ test:
 # Black-box HTTP contract suite; boots backend/ on a temp DB.
 test-contract:
 	cd contract-tests && yarn test
+
+test-backend:
+	cd backend && yarn test
 
 migrate:
 	cd backend && yarn build && yarn migrate
