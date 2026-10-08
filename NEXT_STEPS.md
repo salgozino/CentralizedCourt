@@ -18,20 +18,57 @@ be able to resume from here.
   - UI: login (email -> code), home with per-role sections, admin role management.
   - `make test`: 88 backend (Jest) + 19 frontend (vitest) + 63 contract tests pass.
     Manual browser check against the Nest backend done by the user.
+- Slice 2 (create a case), backend only, is in progress:
+  - Entity `Case` (`cases` table, migration `CreateCases`): `creatorId`, `title`, `description`,
+    `outcomes` (JSON `string[]`), `voteWindowSeconds`, `panelSize` (default 3), `selectionMethod`
+    (default `random`), `status` (`awaiting_jurors` | `voting` | `resolved`, starts in
+    `awaiting_jurors`), `result` (nullable), `createdAt`, `updatedAt`.
+  - API: `POST /api/cases` (session + CSRF + creator role) answers 201 with the case. Guard order:
+    401 anonymous, 403 CSRF, 403 `Creator role required` (admins always pass), then
+    422 validation. Unknown fields (e.g. `status`, `evidence`) are rejected with 422.
+  - Validation: title 3-200 chars, description 1-5000 (both trimmed), 2-10 outcomes of 1-100 chars,
+    unique ignoring case, `voteWindowSeconds` 60 s to 30 days, `panelSize` odd 1-11.
+  - Tests: `backend/test/cases.spec.ts` and new cases in `backend/test/migrations.spec.ts`.
 - Zero-warning lint gate: husky `pre-commit` (lint-staged: Prettier, ESLint, oxlint) and
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
 
 ## Next
 
-1. Slice 2: create a case and see it listed (creator role only). Store the panel size
-   (default 3) and the selection method (default random) on the case instead of
-   hard-coding them, so later case procedures fit without rework (see `ROADMAP.md`, v1).
-   The experiment scope and acceptance check stay unchanged.
+1. Slice 2, rest of the scope (decisions already taken):
+   - `GET /api/cases`: one endpoint that filters by user. Creators see the cases they created
+     (by `creatorId`, even after losing the creator role), admins see all, jurors see their
+     assigned cases from slice 3, everyone else gets `[]`. Newest first, no pagination.
+   - `GET /api/cases/:id`: same visibility rule; a case the user cannot see answers 404 (not 403).
+   - No `PATCH`/`DELETE`: cases are immutable.
+   - Contract tests for create/list/detail in `contract-tests/`.
+   - UI: creation form (title, description, outcomes, vote window as a duration defaulting to
+     2 min, panel size, selection method; no evidence input), list on the home, case detail.
+   - Then mark the slice 2 rows of `ACCEPTANCE.md`.
+2. Before slice 3, write the end-to-end acceptance test skeleton (only the HTTP calls) to fix the
+   API shape of draw and vote.
+3. Slice 3: the draw is an explicit step after creation (also needed for manual selection, after
+   asking the juror whether they accept). Each juror's deadline = draw time + `voteWindowSeconds`.
+   Validate `panelSize` against the eligible jurors at draw time, not at creation.
 
 ## Open questions / decisions pending
 
-- Tie-breaking rule when votes are split (needed before slice 4).
+- Rule: an admin can do everything a creator can (and every admin action), without needing the
+  extra role flags. Exception: an admin can never be drawn, assigned or vote as a juror, even
+  with the juror flag set, because they already control the case (slice 3 must enforce it).
+- Tie-breaking rule when votes are split (needed before slice 4). An odd panel only avoids ties
+  with 2 outcomes and every juror voting.
+- Votes reference the outcome label; decide before slice 4 whether matching is exact or
+  case-insensitive (outcomes are unique ignoring case).
+- Evidence (deferred, separate migration): PDF URLs added AFTER the case is created and BEFORE the
+  draw, only by the creator or an admin; not part of `POST /api/cases`. Decide then whether a plain
+  `string[]` is enough or each item needs `addedBy`/`addedAt` (audit log, concurrent appends).
+- Panel larger than the juror pool (e.g. 7 requested, 5 jurors): to be solved later by giving
+  jurors multiple votes once the pool grows. Today `panelSize` means number of jurors, one vote
+  each. A case can stay in `awaiting_jurors` forever since there is no cancel.
+- `backend/test/app.spec.ts` hangs when `backend/.env` defines `SECRET_KEY`: the "missing
+  SECRET_KEY" test spawns `src/main.ts`, which loads `.env`, starts the server and never exits.
+  It passes in a checkout without `.env`. The test should isolate itself from `.env`.
 - Login codes are bound to the browser session that requested them (only that session can
   verify them; a new request revokes only that session's older codes). Each code allows
   5 failed attempts, counted only for codes in the attacker's own session. Per-IP caps

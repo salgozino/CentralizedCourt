@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import { DataSource } from 'typeorm';
 
 import { dataSourceOptions } from '../src/data-source';
-import { LoginCode, LoginEvent, Session, User } from '../src/entities';
+import { Case, LoginCode, LoginEvent, Session, User } from '../src/entities';
 
 import { migratedDataSource, tempDbPath } from './helpers';
 
@@ -23,7 +23,7 @@ describe('migrations', () => {
   it('creates the schema and is a no-op the second time', async () => {
     const tables = await dataSource.query(`SELECT name FROM sqlite_master WHERE type = 'table'`);
     expect(tables.map((t: { name: string }) => t.name)).toEqual(
-      expect.arrayContaining(['users', 'login_codes', 'login_events', 'sessions']),
+      expect.arrayContaining(['users', 'login_codes', 'login_events', 'sessions', 'cases']),
     );
     expect(await dataSource.runMigrations()).toHaveLength(0);
     expect(await dataSource.showMigrations()).toBe(false);
@@ -72,5 +72,43 @@ describe('migrations', () => {
     const session = await dataSource.getRepository(Session).findOneByOrFail({ id: 'abc' });
     expect(session.data).toEqual({ codeIds: [1, 2], userId: 3 });
     expect(session.expiresAt.getTime()).toBe(expiresAt.getTime());
+  });
+
+  it('applies the Case defaults and round-trips outcomes', async () => {
+    const creator = await dataSource.getRepository(User).save({ email: 'case-owner@example.com' });
+    const repo = dataSource.getRepository(Case);
+    const saved = await repo.save(
+      repo.create({
+        creatorId: creator.id,
+        title: 'T',
+        description: 'D',
+        outcomes: ['A', 'B'],
+        voteWindowSeconds: 120,
+      }),
+    );
+    const stored = await repo.findOneByOrFail({ id: saved.id });
+    expect(stored).toMatchObject({
+      outcomes: ['A', 'B'],
+      panelSize: 3,
+      selectionMethod: 'random',
+      status: 'awaiting_jurors',
+      result: null,
+    });
+    expect(stored.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('refuses to delete a user who created a case', async () => {
+    const creator = await dataSource.getRepository(User).findOneByOrFail({ email: 'case-owner@example.com' });
+    await expect(dataSource.getRepository(User).delete(creator.id)).rejects.toThrow(/FOREIGN KEY/);
+  });
+
+  it('reverts the cases migration cleanly', async () => {
+    const { dir: revertDir, dbPath: revertPath } = tempDbPath();
+    const ds = await migratedDataSource(revertPath);
+    await ds.undoLastMigration();
+    const tables = await ds.query(`SELECT name FROM sqlite_master WHERE type = 'table'`);
+    expect(tables.map((t: { name: string }) => t.name)).not.toContain('cases');
+    await ds.destroy();
+    fs.rmSync(revertDir, { recursive: true, force: true });
   });
 });

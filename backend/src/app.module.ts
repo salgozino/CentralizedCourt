@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
+import { CasesModule } from './cases/cases.module';
 import { AppConfig, loadConfig } from './config/config';
 import { dataSourceOptions } from './data-source';
 
@@ -20,6 +21,7 @@ import { dataSourceOptions } from './data-source';
     }),
     AuthModule,
     AdminModule,
+    CasesModule,
   ],
 })
 export class AppModule {}
