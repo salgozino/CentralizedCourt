@@ -47,17 +47,30 @@ be able to resume from here.
     `frontend/src/cases-routing.test.tsx`, form tests and API tests. `make test`: 133 backend,
     80 frontend and 66 contract tests pass; `make lint` passes. Frontend production build passes.
     Manual frontend/backend validation completed and approved by the user.
+- Slice 3 backend (draw), branch `feat/draw-vote`, commits `0f1ede8` (red), `a882342` (green):
+  - Entity `CaseJuror` (`case_jurors`, migration `CreateCaseJurors`): `caseId`, `userId`, `position`,
+    `drawnAt`, `deadline` (= `drawnAt` + `voteWindowSeconds`); unique (`caseId`, `userId`).
+  - API: `POST /api/cases/:id/draw` (session + CSRF) answers 200 `{case, jurors: [{userId, email,
+    drawnAt, deadline}]}` and moves the case to `voting`. Order: 401, 403 CSRF, 404 (missing/invalid
+    id), 403 `Only the case creator or an admin can draw jurors` (owner by `creatorId`), 422 body,
+    409 not `awaiting_jurors`, then 422 method checks / 409 `Not enough eligible jurors: N available,
+    M required`. Random cases take no body (`jurorIds` → 422); manual cases need exactly `panelSize`
+    distinct `jurorIds`, kept in the given order.
+  - Eligible juror = `isJuror && isActive && !isAdmin`. RNG: `DRAW_RNG` provider, `crypto.randomInt`
+    by default, seeded in tests; partial Fisher-Yates over the pool ordered by id.
+  - Evidence: `backend/test/draw.spec.ts`, `contract-tests/tests/draw.contract.test.ts`, live
+    auth-verification run. `make test`: 152 backend, 80 frontend, 69 contract tests; `make lint` passes.
 - Zero-warning lint gate: husky `pre-commit` (lint-staged: Prettier, ESLint, oxlint) and
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
 
 ## Next
 
-1. Before slice 3, write the end-to-end acceptance test skeleton (only the HTTP calls) to fix the
-   API shape of draw and vote.
-2. Slice 3: the draw is an explicit step after creation (also needed for manual selection, after
-   asking the juror whether they accept). Each juror's deadline = draw time + `voteWindowSeconds`.
-   Validate `panelSize` against the eligible jurors at draw time, not at creation.
+1. Vote casting (slice 4): needs a spec (endpoint shape, injected clock, tie rule) before the red
+   tests. Write the end-to-end acceptance test skeleton (HTTP calls only) with it.
+2. Slice 3 remaining: expose drawn jurors in case reads (list/detail visibility for assigned jurors)
+   and the UI (draw button, manual picker, per-juror deadline), which closes slice 3 row 3.
+3. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 
 ## Open questions / decisions pending
 
@@ -71,6 +84,8 @@ be able to resume from here.
 - Evidence (deferred, separate migration): PDF URLs added AFTER the case is created and BEFORE the
   draw, only by the creator or an admin; not part of `POST /api/cases`. Decide then whether a plain
   `string[]` is enough or each item needs `addedBy`/`addedAt` (audit log, concurrent appends).
+- Draw by a non-owner of an existing case answers 403 (not 404), which reveals that the case
+  exists; chosen to match the spec. Revisit if case ids must stay private.
 - Panel larger than the juror pool (e.g. 7 requested, 5 jurors): to be solved later by giving
   jurors multiple votes once the pool grows. Today `panelSize` means number of jurors, one vote
   each. A case can stay in `awaiting_jurors` forever since there is no cancel.
