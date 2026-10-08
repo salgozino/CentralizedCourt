@@ -11,6 +11,7 @@ import { getMe } from './api';
 
 beforeEach(() => {
   vi.mocked(getMe).mockReset();
+  window.history.replaceState(null, '', '/');
 });
 
 test('shows login when not authenticated', async () => {
@@ -24,5 +25,6 @@ test('shows home when authenticated', async () => {
   vi.mocked(getMe).mockResolvedValue({ id: 1, email: 'u@example.com', roles: ['creator', 'user'] });
   render(<App />);
   expect(await screen.findByText('u@example.com')).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: 'Cases' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Cases' })).toHaveAttribute('href', '/cases');
 });

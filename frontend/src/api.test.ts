@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { ApiError, createCase, getMe, setUserRoles, verifyCode } from './api';
+import { ApiError, createCase, getCase, getMe, listCases, setUserRoles, verifyCode } from './api';
 
 const fetchMock = vi.fn();
 
@@ -38,6 +38,19 @@ test('POST sends X-CSRFToken from the cookie', async () => {
   const [url, init] = fetchMock.mock.calls[0];
   expect(url).toBe('/api/auth/verify');
   expect(new Headers(init.headers).get('X-CSRFToken')).toBe('abc123');
+});
+
+test.each([
+  ['/api/cases', () => listCases(), []],
+  ['/api/cases/42', () => getCase('42'), { id: 42 }],
+] as const)('case read uses authenticated GET without CSRF: %s', async (path, call, body) => {
+  fetchMock.mockResolvedValue(json(200, body));
+  await expect(call()).resolves.toEqual(body);
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe(path);
+  expect(init.method).toBe('GET');
+  expect(init.credentials).toBe('same-origin');
+  expect(new Headers(init.headers).get('X-CSRFToken')).toBeNull();
 });
 
 test('GET does not send X-CSRFToken', async () => {

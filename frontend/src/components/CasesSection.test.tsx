@@ -1,11 +1,15 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, test, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import CasesSection from './CasesSection';
+import CaseDetailPage from './CaseDetailPage';
 
 vi.mock('../api', async (orig) => ({
   ...(await orig<typeof import('../api')>()),
   createCase: vi.fn(),
+  listCases: vi.fn().mockResolvedValue([]),
+  getCase: vi.fn(),
 }));
 import { ApiError, createCase, type Case, type NewCase } from '../api';
 
@@ -27,7 +31,14 @@ const stored = (input: NewCase, extra: Partial<Case> = {}): Case => ({
 function setup(canCreate = true) {
   const onUnauthorized = vi.fn();
   const user = userEvent.setup();
-  render(<CasesSection canCreate={canCreate} onUnauthorized={onUnauthorized} />);
+  render(
+    <MemoryRouter initialEntries={['/cases']}>
+      <Routes>
+        <Route path="/cases/*" element={<CasesSection canCreate={canCreate} onUnauthorized={onUnauthorized} />} />
+        <Route path="/cases/:id" element={<CaseDetailPage onUnauthorized={onUnauthorized} />} />
+      </Routes>
+    </MemoryRouter>,
+  );
   return { user, onUnauthorized };
 }
 
@@ -52,11 +63,11 @@ const expectedInput: NewCase = {
   selectionMethod: 'random',
 };
 
-test('without the role, New case is disabled and explained', () => {
+test('without the role, New case is disabled and explained', async () => {
   setup(false);
   expect(newCaseButton()).toBeDisabled();
   expect(newCaseButton()).toHaveAccessibleDescription('Only creators and admins can create cases.');
-  expect(screen.getByText('Case list coming soon.')).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'No cases to show' })).toBeInTheDocument();
 });
 
 test('New case opens the form and hides itself; Cancel goes back', async () => {
@@ -143,16 +154,17 @@ test('a valid form sends the case and shows what the backend stored', async () =
   await user.click(submitButton());
 
   expect(createCase).toHaveBeenCalledWith(expectedInput);
-  const card = await screen.findByRole('article', { name: 'Created case' });
+  const card = await screen.findByRole('article', { name: 'Case detail' });
   expect(within(card).getByRole('status')).toHaveTextContent('Case created');
   expect(within(card).getByText('#42')).toBeInTheDocument();
   expect(within(card).getByText('Stored title')).toBeInTheDocument();
   expect(within(within(card).getByRole('list', { name: 'Outcomes' })).getAllByRole('listitem')).toHaveLength(2);
-  expect(within(card).getByText('2 minutes')).toBeInTheDocument();
+  expect(within(card).getByText('2 minutes (120 seconds)')).toBeInTheDocument();
   expect(within(card).getByText('Random draw')).toBeInTheDocument();
-  expect(within(card).getByText('Awaiting jurors')).toBeInTheDocument();
+  expect(within(card).getAllByText('Awaiting jurors')).toHaveLength(2);
 
   // New case is back and opens an empty form.
+  await user.click(screen.getByRole('link', { name: /Back to cases/ }));
   await user.click(newCaseButton()!);
   expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('');
 });
@@ -181,7 +193,7 @@ test('sends the chosen window, panel size and selection method', async () => {
     panelSize: 5,
     selectionMethod: 'manual',
   });
-  expect(await screen.findByText('1 day 12 hours')).toBeInTheDocument();
+  expect(await screen.findByText('1 day 12 hours (129600 seconds)')).toBeInTheDocument();
 });
 
 test('blocks the button while creating, so a double click creates one case', async () => {
@@ -196,7 +208,7 @@ test('blocks the button while creating, so a double click creates one case', asy
   await user.click(submitButton());
   expect(createCase).toHaveBeenCalledTimes(1);
   resolve(stored(expectedInput));
-  expect(await screen.findByRole('article', { name: 'Created case' })).toBeInTheDocument();
+  expect(await screen.findByRole('article', { name: 'Case detail' })).toBeInTheDocument();
 });
 
 test('a 422 is shown on the matching field and cleared by editing it', async () => {
@@ -248,5 +260,5 @@ test.each([
   expect(outcome(2)).toHaveValue('No refund');
 
   await user.click(submitButton());
-  expect(await screen.findByRole('article', { name: 'Created case' })).toBeInTheDocument();
+  expect(await screen.findByRole('article', { name: 'Case detail' })).toBeInTheDocument();
 });
