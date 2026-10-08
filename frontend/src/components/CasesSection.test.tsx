@@ -231,7 +231,9 @@ test('a 422 is shown on the matching field and cleared by editing it', async () 
 });
 
 test('a 403 explains that the permission is gone and keeps the data', async () => {
-  vi.mocked(createCase).mockRejectedValue(new ApiError(403, 'POST /cases failed with 403', 'Creator role required'));
+  vi.mocked(createCase).mockRejectedValue(
+    new ApiError(403, 'POST /cases failed with 403', 'Only creators can create cases'),
+  );
   const { user } = setup();
   await openAndFill(user);
   await user.click(submitButton());

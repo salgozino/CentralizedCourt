@@ -64,7 +64,7 @@ describe('create case over HTTP', () => {
     const before = await booted.dataSource.getRepository(Case).count();
     const res = await (await as(email)).post('/api/cases', validCase);
     expect(res.status).toBe(403);
-    expect(res.body).toEqual({ detail: 'Creator role required' });
+    expect(res.body).toEqual({ detail: 'Only creators can create cases' });
     expect(await booted.dataSource.getRepository(Case).count()).toBe(before);
   });
 
