@@ -40,13 +40,19 @@ describe('app bootstrap', () => {
   });
 
   it('exits with a clear message when SECRET_KEY is missing', () => {
-    const env: NodeJS.ProcessEnv = { ...process.env, DB_PATH: dbPath };
+    const backendDir = path.resolve(__dirname, '..');
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      DB_PATH: dbPath,
+      TS_NODE_PROJECT: path.join(backendDir, 'tsconfig.json'),
+    };
     delete env.SECRET_KEY;
-    const result = spawnSync(process.execPath, ['-r', 'ts-node/register/transpile-only', 'src/main.ts'], {
-      cwd: path.resolve(__dirname, '..'),
-      env,
-      encoding: 'utf8',
-    });
+    // Run from the temp dir so a developer's backend/.env (loaded from cwd) cannot supply SECRET_KEY.
+    const result = spawnSync(
+      process.execPath,
+      ['-r', require.resolve('ts-node/register/transpile-only'), path.join(backendDir, 'src/main.ts')],
+      { cwd: dir, env, encoding: 'utf8', timeout: 30_000 },
+    );
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/SECRET_KEY environment variable is required/);
   });

@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Logger, Param, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { DataSource } from 'typeorm';
 import { z } from 'zod';
@@ -214,12 +214,17 @@ describe('auth over HTTP', () => {
       const code = await b.requestCode(JUROR1);
       const cookies = { sessionid: b.jar.get('sessionid')! };
       const restore = await breakSessionWrites(ds);
-      let failed;
+      // The 500 is the point of this test; keep the exception filter's error log out of the output.
+      const logged = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+      let failed, errors;
       try {
         failed = await b.verify(JUROR1, code);
       } finally {
+        errors = logged.mock.calls.flat();
+        logged.mockRestore();
         await restore();
       }
+      expect(errors).toEqual([expect.stringMatching(/sessions are read-only/)]);
       expect(failed.status).toBe(500);
       expect(failed.body).toEqual({ detail: 'Internal Server Error' });
       expect(
