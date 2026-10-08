@@ -22,6 +22,11 @@ export type Case = NewCase & {
   updatedAt: string;
 };
 
+export type DrawnJuror = { userId: number; email: string; drawnAt: string; deadline: string };
+
+/** Body of `POST /api/cases/:id/draw` (200): the case, now `voting`, and the drawn panel in order. */
+export type DrawResult = { case: Case; jurors: DrawnJuror[] };
+
 /** One entry of a 422 body: `loc` is e.g. ['body', 'payload', 'outcomes', 1]. */
 export type ValidationIssue = { loc: Array<string | number>; msg: string };
 
@@ -109,4 +114,9 @@ export async function getCase(id: string): Promise<Case> {
 
 export async function createCase(input: NewCase): Promise<Case> {
   return (await request('POST', '/cases', input)).json();
+}
+
+/** Random draw only (manual picker deferred). Errors surface as `ApiError`. */
+export async function drawJurors(caseId: number): Promise<DrawResult> {
+  throw new Error(`drawJurors(${caseId}) is not implemented`);
 }
