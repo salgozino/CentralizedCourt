@@ -23,7 +23,7 @@ describe('migrations', () => {
   it('creates the schema and is a no-op the second time', async () => {
     const tables = await dataSource.query(`SELECT name FROM sqlite_master WHERE type = 'table'`);
     expect(tables.map((t: { name: string }) => t.name)).toEqual(
-      expect.arrayContaining(['users', 'login_codes', 'login_events', 'sessions', 'cases']),
+      expect.arrayContaining(['users', 'login_codes', 'login_events', 'sessions', 'cases', 'case_jurors']),
     );
     expect(await dataSource.runMigrations()).toHaveLength(0);
     expect(await dataSource.showMigrations()).toBe(false);
@@ -102,12 +102,16 @@ describe('migrations', () => {
     await expect(dataSource.getRepository(User).delete(creator.id)).rejects.toThrow(/FOREIGN KEY/);
   });
 
-  it('reverts the cases migration cleanly', async () => {
+  it('reverts the case_jurors and cases migrations cleanly', async () => {
     const { dir: revertDir, dbPath: revertPath } = tempDbPath();
     const ds = await migratedDataSource(revertPath);
+    const tableNames = async () =>
+      (await ds.query(`SELECT name FROM sqlite_master WHERE type = 'table'`)).map((t: { name: string }) => t.name);
     await ds.undoLastMigration();
-    const tables = await ds.query(`SELECT name FROM sqlite_master WHERE type = 'table'`);
-    expect(tables.map((t: { name: string }) => t.name)).not.toContain('cases');
+    expect(await tableNames()).not.toContain('case_jurors');
+    expect(await tableNames()).toContain('cases');
+    await ds.undoLastMigration();
+    expect(await tableNames()).not.toContain('cases');
     await ds.destroy();
     fs.rmSync(revertDir, { recursive: true, force: true });
   });
