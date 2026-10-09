@@ -46,7 +46,7 @@ describe('case visibility over HTTP', () => {
     expect(res.body.map((c: { id: number }) => c.id)).toEqual([ids[2], ids[0]]);
     const detail = await owner.get(`/api/cases/${ids[0]}`);
     expect(detail.status).toBe(200);
-    expect(detail.body).toEqual(res.body[1]);
+    expect(detail.body).toEqual({ ...res.body[1], jurors: [] });
     expect(Object.keys(detail.body).sort()).toEqual(
       [
         'id',
@@ -61,6 +61,7 @@ describe('case visibility over HTTP', () => {
         'result',
         'createdAt',
         'updatedAt',
+        'jurors',
       ].sort(),
     );
     expect((await admin.get(`/api/cases/${ids[0]}`)).body).toEqual(detail.body);
