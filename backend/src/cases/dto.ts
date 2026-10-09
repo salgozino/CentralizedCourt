@@ -75,7 +75,7 @@ export interface CaseDetailOut extends CaseOut {
 
 export interface JurorOut {
   jurorId: number;
-  name: string | null;
+  name: string;
   drawnAt: Date;
   deadline: Date;
 }

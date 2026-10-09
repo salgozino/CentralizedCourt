@@ -16,8 +16,8 @@ export class User {
   @Column({ type: 'varchar', length: 254, unique: true, transformer: lowercase })
   email: string;
 
-  @Column({ type: 'varchar', length: 200, nullable: true })
-  name: string | null;
+  @Column({ type: 'varchar', length: 200 })
+  name: string;
 
   @Column({ type: 'boolean', default: false })
   isAdmin: boolean;

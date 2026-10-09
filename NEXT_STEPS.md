@@ -66,19 +66,20 @@ be able to resume from here.
 
 ## User names prerequisite
 
-- Added nullable `User.name` (varchar 200) with an additive, reversible migration; existing users keep their data and have null names.
-- Fresh seeds have basic names (Admin, Creator 1/2, Juror 1–5, User). Existing seeded users remain untouched, including names; reset the local development DB if fresh named fixtures are desired.
+- `User.name` is now required (varchar 200, NOT NULL, no default), and juror DTO names are strings. DB rejects omitted/null names and null updates. Required-name red commit: `f6c6aa6`.
+- The original `AddUserName` migration was revised for a fresh development DB, as explicitly approved. It requires an empty users table. An already-applied migration will not run again: reset the local DB (including SQLite sidecars, with the backend stopped), run `make migrate`, then `make seed` against the same DB path before restarting.
+- Fresh seeds have basic names (Admin, Creator 1/2, Juror 1–5, User). Existing seeded users remain untouched, including names.
 - No user-creation endpoint exists; name entry/management is deferred. Case creation is unchanged.
-- Checks: `make test` passed (153 backend, 94 frontend, 69 contract). First run hit two frontend 5-second timeouts; the unchanged rerun passed.
+- Checks after making names required: `make test` passed (162 backend, 94 frontend, 70 contract). Original nullable-name prerequisite also passed; its first run hit two frontend 5-second timeouts and the unchanged rerun passed.
 
 ## Juror-read backend follow-up
 
 - `GET /api/cases`: admin sees all, owner sees owned, assigned juror sees assigned cases; same ordering, no duplicates and no panel in list DTOs.
 - `GET /api/cases/:id`: same visibility; full panel in position order, empty before draw. Hidden/missing/invalid cases remain 404; anonymous remains 401. Reads need no CSRF.
-- Detail and draw's nested `case` include `jurors: [{jurorId, name, drawnAt, deadline}]`. Draw's top-level panel uses the same DTO: no email. `jurorId` is the user's ID, not the assignment row ID. Existing users without names return null (never an email fallback).
+- Detail and draw's nested `case` include `jurors: [{jurorId, name, drawnAt, deadline}]`. Draw's top-level panel uses the same DTO: no email. `jurorId` is the user's ID, not the assignment row ID. Names are required strings, never null and never an email fallback; reset previously migrated development databases as described above.
 - `POST /api/cases` stays unchanged. No frontend files changed. The frontend draw adapter/component still expects `userId` and `email`: update it to this new backend contract in the next frontend task (mocked frontend tests do not verify live compatibility).
 - Evidence: red commit `7c532d1`; backend red run had 8 failures. The contract red run included expected draw failures, but cases contract compilation was blocked by an unsupported helper option; that test option was corrected during green implementation.
-- Checks: `make test` passes (161 backend, 94 frontend, 70 contract); automated HTTP tests cover owner/admin/assigned vs unrelated creator/juror/user, anonymous, privacy and panel ordering. Separate live curl skill verification requires the user's backend URL and stdout log path; not run.
+- Checks: `make test` passes (161 backend, 94 frontend, 70 contract); automated HTTP tests cover owner/admin/assigned vs unrelated creator/juror/user, anonymous, privacy and panel ordering. Live curl skill verification passed against `http://localhost:8001` using `/tmp/backend-w1.log` after the user applied the original name migration: owner/admin/assigned reads, hidden reads, no-CSRF reads, draw guard precedence, owner/admin draws, panel privacy/order and deadlines. Fixtures #1/#2 were created. That run preceded the NOT NULL change and showed null names in old fixtures; rerun after resetting/reseeding to verify live non-null names.
 
 ## Next
 

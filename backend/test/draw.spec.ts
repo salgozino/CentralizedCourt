@@ -22,7 +22,7 @@ function seeded(seed: number): () => number {
 
 interface JurorOut {
   jurorId: number;
-  name: string | null;
+  name: string;
   drawnAt: string;
   deadline: string;
 }

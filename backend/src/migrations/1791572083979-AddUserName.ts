@@ -4,8 +4,9 @@ export class AddUserName1791572083979 implements MigrationInterface {
   name = 'AddUserName1791572083979';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add in place instead of rebuilding users: existing case/login foreign keys remain intact.
-    await queryRunner.query('ALTER TABLE "users" ADD COLUMN "name" varchar(200)');
+    // Fresh development DB only: users must be empty when adding a required column without a default.
+    // Previously migrated development databases must be reset and reseeded.
+    await queryRunner.query('ALTER TABLE "users" ADD COLUMN "name" varchar(200) NOT NULL');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
