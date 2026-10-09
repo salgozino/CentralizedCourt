@@ -25,7 +25,15 @@ async function setup() {
   render(
     <MemoryRouter initialEntries={[`/cases/${awaiting.id}`]}>
       <Routes>
-        <Route path="/cases/:id" element={<CaseDetailPage onUnauthorized={onUnauthorized} />} />
+        <Route
+          path="/cases/:id"
+          element={
+            <CaseDetailPage
+              user={{ id: awaiting.creatorId, email: 'owner@example.com', roles: ['creator', 'user'] }}
+              onUnauthorized={onUnauthorized}
+            />
+          }
+        />
       </Routes>
     </MemoryRouter>,
   );

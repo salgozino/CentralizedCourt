@@ -15,9 +15,15 @@ function drawErrorMessage(error: unknown): string {
 
 export default function DrawJurorsPanel({
   value: c,
+  canDraw,
   onDrawn,
   onUnauthorized,
-}: Readonly<{ value: Case; onDrawn: (result: DrawResult) => void; onUnauthorized: () => void }>) {
+}: Readonly<{
+  value: Case;
+  canDraw: boolean;
+  onDrawn: (result: DrawResult) => void;
+  onUnauthorized: () => void;
+}>) {
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jurors, setJurors] = useState<DrawnJuror[] | null>(null);
@@ -56,12 +62,14 @@ export default function DrawJurorsPanel({
           {error}
         </p>
       )}
-      <Button
-        text={drawing ? 'Drawing jurors…' : 'Draw jurors'}
-        isLoading={drawing}
-        isDisabled={drawing}
-        onPress={() => void draw()}
-      />
+      {canDraw && (
+        <Button
+          text={drawing ? 'Drawing jurors…' : 'Draw jurors'}
+          isLoading={drawing}
+          isDisabled={drawing}
+          onPress={() => void draw()}
+        />
+      )}
     </section>
   );
 }
