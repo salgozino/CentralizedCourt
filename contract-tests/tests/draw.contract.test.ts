@@ -21,12 +21,17 @@ describe('jury draw contract', () => {
     expect(created.status).toBe(201);
     const res = await owner.post(`/api/cases/${created.body.id}/draw`);
     expect(res.status).toBe(200);
-    expect(res.body.case).toEqual({ ...created.body, status: 'voting', updatedAt: expect.any(String) });
+    expect(res.body.case).toEqual({
+      ...created.body,
+      status: 'voting',
+      updatedAt: expect.any(String),
+      jurors: res.body.jurors,
+    });
     expect(res.body.jurors).toHaveLength(3);
     for (const juror of res.body.jurors) {
       expect(juror).toEqual({
-        userId: expect.any(Number),
-        email: expect.stringMatching(/^juror\d@example\.com$/),
+        jurorId: expect.any(Number),
+        name: expect.stringMatching(/^Juror \d$/),
         drawnAt: expect.any(String),
         deadline: expect.any(String),
       });
@@ -61,6 +66,6 @@ describe('jury draw contract', () => {
     const jurorIds = [ids['juror3@example.com'], ids['juror1@example.com'], ids['juror2@example.com']];
     const good = await owner.post(`/api/cases/${accepted.body.id}/draw`, { jurorIds });
     expect(good.status).toBe(200);
-    expect(good.body.jurors.map((j: { userId: number }) => j.userId)).toEqual(jurorIds);
+    expect(good.body.jurors.map((j: { jurorId: number }) => j.jurorId)).toEqual(jurorIds);
   });
 });

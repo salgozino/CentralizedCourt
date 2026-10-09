@@ -64,15 +64,34 @@ be able to resume from here.
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
 
+## User names prerequisite
+
+- `User.name` is now required (varchar 200, NOT NULL, no default), and juror DTO names are strings. DB rejects omitted/null names and null updates. Required-name red commit: `f6c6aa6`.
+- The original `AddUserName` migration was revised for a fresh development DB, as explicitly approved. It requires an empty users table. An already-applied migration will not run again: reset the local DB (including SQLite sidecars, with the backend stopped), run `make migrate`, then `make seed` against the same DB path before restarting.
+- Fresh seeds have basic names (Admin, Creator 1/2, Juror 1–5, User). Existing seeded users remain untouched, including names.
+- No user-creation endpoint exists; name entry/management is deferred. Case creation is unchanged.
+- Checks after making names required: `make test` passed (162 backend, 94 frontend, 70 contract). Original nullable-name prerequisite also passed; its first run hit two frontend 5-second timeouts and the unchanged rerun passed.
+
+## Juror-read backend follow-up
+
+- `GET /api/cases`: admin sees all, owner sees owned, assigned juror sees assigned cases; same ordering, no duplicates and no panel in list DTOs.
+- `GET /api/cases/:id`: same visibility; full panel in position order, empty before draw. Hidden/missing/invalid cases remain 404; anonymous remains 401. Reads need no CSRF.
+- Detail and draw's nested `case` include `jurors: [{jurorId, name, drawnAt, deadline}]`. Draw's top-level panel uses the same DTO: no email. `jurorId` is the user's ID, not the assignment row ID. Names are required strings, never null and never an email fallback; reset previously migrated development databases as described above.
+- `POST /api/cases` stays unchanged. No frontend files changed. The frontend draw adapter/component still expects `userId` and `email`: update it to this new backend contract in the next frontend task (mocked frontend tests do not verify live compatibility).
+- Evidence: red commit `7c532d1`; backend red run had 8 failures. The contract red run included expected draw failures, but cases contract compilation was blocked by an unsupported helper option; that test option was corrected during green implementation.
+- Checks: `make test` passes (161 backend, 94 frontend, 70 contract); automated HTTP tests cover owner/admin/assigned vs unrelated creator/juror/user, anonymous, privacy and panel ordering. Live curl skill verification passed against `http://localhost:8001` using `/tmp/backend-w1.log` after the user applied the original name migration: owner/admin/assigned reads, hidden reads, no-CSRF reads, draw guard precedence, owner/admin draws, panel privacy/order and deadlines. Fixtures #1/#2 were created. That run preceded the NOT NULL change and showed null names in old fixtures; rerun after resetting/reseeding to verify live non-null names.
+
 ## Next
 
 1. Vote casting (slice 4): needs a spec (endpoint shape, injected clock, tie rule) before the red
    tests. Write the end-to-end acceptance test skeleton (HTTP calls only) with it.
-2. Slice 3 remaining: expose drawn jurors in case reads (list/detail visibility for assigned jurors)
-   and the UI (draw button, manual picker, per-juror deadline), which closes slice 3 row 3.
+2. Slice 3 remaining: align the frontend draw DTO with the new private-safe backend panel; render persisted jurors from detail and their deadlines. Manual picker remains pending.
 3. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 
 ## Open questions / decisions pending
+
+- Product decision: the juror role must not be removable. The current admin roles endpoint still permits removal; enforcing this is explicitly out of scope for the juror-read work and must be addressed later.
+- Juror reads: owner (WIPO), admin and assigned jurors can read cases. Lists omit panels; detail and draw's nested case expose the full panel (`jurorId`, `name`, `drawnAt`, `deadline`). Draw juror output must not expose email. Assigned access is based on assignment, not current role.
 
 - Rule: an admin can do everything a creator can (and every admin action), without needing the
   extra role flags. Exception: an admin can never be drawn, assigned or vote as a juror, even

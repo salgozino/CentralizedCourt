@@ -21,8 +21,8 @@ function seeded(seed: number): () => number {
 }
 
 interface JurorOut {
-  userId: number;
-  email: string;
+  jurorId: number;
+  name: string;
   drawnAt: string;
   deadline: string;
 }
@@ -85,12 +85,14 @@ describe('jury draw over HTTP', () => {
     expect(res.body.case.status).toBe('voting');
     const jurors: JurorOut[] = res.body.jurors;
     expect(jurors).toHaveLength(3);
-    expect(new Set(jurors.map((j) => j.userId)).size).toBe(3);
+    expect(res.body.case.jurors).toEqual(jurors);
+    expect(new Set(jurors.map((j) => j.jurorId)).size).toBe(3);
     for (const juror of jurors) {
-      const user = await users().findOneByOrFail({ id: juror.userId });
+      const user = await users().findOneByOrFail({ id: juror.jurorId });
       expect(user.isJuror).toBe(true);
       expect(user.isAdmin).toBe(false);
-      expect(juror.email).toBe(user.email);
+      expect(juror.name).toBe(user.name);
+      expect(Object.keys(juror).sort()).toEqual(['deadline', 'drawnAt', 'jurorId', 'name']);
       const drawnAt = new Date(juror.drawnAt).getTime();
       expect(drawnAt).toBeGreaterThanOrEqual(before - 1000);
       expect(drawnAt).toBeLessThanOrEqual(after + 1000);
@@ -131,7 +133,7 @@ describe('jury draw over HTTP', () => {
       next = seeded(42);
       const res = await owner.post(`/api/cases/${id}/draw`);
       expect(res.status).toBe(200);
-      draws.push(res.body.jurors.map((j: JurorOut) => j.userId));
+      draws.push(res.body.jurors.map((j: JurorOut) => j.jurorId));
     }
     expect(draws[1]).toEqual(draws[0]);
     expect(draws[2]).toEqual(draws[0]);
@@ -157,7 +159,7 @@ describe('jury draw over HTTP', () => {
       const res = await owner.post(`/api/cases/${id}/draw`, { jurorIds });
       expect(res.status).toBe(200);
       expect(res.body.case.status).toBe('voting');
-      expect(res.body.jurors.map((j: JurorOut) => j.userId)).toEqual(jurorIds);
+      expect(res.body.jurors.map((j: JurorOut) => j.jurorId)).toEqual(jurorIds);
       for (const juror of res.body.jurors as JurorOut[])
         expect(new Date(juror.deadline).getTime() - new Date(juror.drawnAt).getTime()).toBe(120 * 1000);
     });

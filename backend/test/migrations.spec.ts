@@ -33,8 +33,35 @@ describe('migrations', () => {
     expect(dataSourceOptions(dbPath).synchronize).toBe(false);
   });
 
+  it('adds a required name column without a default and round-trips a user name', async () => {
+    const columns = await dataSource.query('PRAGMA table_info(users)');
+    expect(columns).toContainEqual(expect.objectContaining({ name: 'name', notnull: 1, dflt_value: null }));
+    // Revert and reapply on the empty DB: resetting development data is explicitly permitted.
+    await dataSource.undoLastMigration();
+    expect(await dataSource.query('PRAGMA table_info(users)')).not.toContainEqual(
+      expect.objectContaining({ name: 'name' }),
+    );
+    await dataSource.runMigrations();
+    await dataSource.getRepository(User).insert({ email: 'named@example.com', name: 'Alice' });
+    expect(await dataSource.getRepository(User).findOneByOrFail({ email: 'named@example.com' })).toMatchObject({
+      name: 'Alice',
+    });
+  });
+
+  it('rejects users without a name, null inserts and null updates at the DB level', async () => {
+    await expect(dataSource.query('INSERT INTO users (email) VALUES (?)', ['missing@example.com'])).rejects.toThrow(
+      /NOT NULL/,
+    );
+    await expect(
+      dataSource.query('INSERT INTO users (email, name) VALUES (?, ?)', ['null@example.com', null]),
+    ).rejects.toThrow(/NOT NULL/);
+    await expect(
+      dataSource.query('UPDATE users SET name = NULL WHERE email = ?', ['named@example.com']),
+    ).rejects.toThrow(/NOT NULL/);
+  });
+
   it('applies the User defaults', async () => {
-    const user = await dataSource.getRepository(User).save({ email: 'a@example.com' });
+    const user = await dataSource.getRepository(User).save({ email: 'a@example.com', name: 'Alice' });
     const stored = await dataSource.getRepository(User).findOneByOrFail({ id: user.id });
     expect(stored).toMatchObject({ isAdmin: false, isCreator: false, isJuror: false, isActive: true, lastLogin: null });
     expect(stored.dateJoined).toBeInstanceOf(Date);
@@ -44,15 +71,15 @@ describe('migrations', () => {
 
   it('stores emails lowercase, matches case-insensitively and keeps them unique', async () => {
     const repo = dataSource.getRepository(User);
-    await repo.insert({ email: 'MiXed@Example.COM' });
+    await repo.insert({ email: 'MiXed@Example.COM', name: 'Mixed' });
     const raw = await dataSource.query(`SELECT email FROM users WHERE email LIKE 'mixed@%'`);
     expect(raw).toEqual([{ email: 'mixed@example.com' }]);
     expect(await repo.findOneBy({ email: 'MIXED@example.com' })).not.toBeNull();
-    await expect(repo.insert({ email: 'mixed@EXAMPLE.com' })).rejects.toThrow(/UNIQUE/);
+    await expect(repo.insert({ email: 'mixed@EXAMPLE.com', name: 'Duplicate' })).rejects.toThrow(/UNIQUE/);
   });
 
   it('cascades login codes when the user is deleted', async () => {
-    const user = await dataSource.getRepository(User).save({ email: 'cascade@example.com' });
+    const user = await dataSource.getRepository(User).save({ email: 'cascade@example.com', name: 'Cascade' });
     const codes = dataSource.getRepository(LoginCode);
     const code = await codes.save({
       userId: user.id,
@@ -75,7 +102,7 @@ describe('migrations', () => {
   });
 
   it('applies the Case defaults and round-trips outcomes', async () => {
-    const creator = await dataSource.getRepository(User).save({ email: 'case-owner@example.com' });
+    const creator = await dataSource.getRepository(User).save({ email: 'case-owner@example.com', name: 'Case Owner' });
     const repo = dataSource.getRepository(Case);
     const saved = await repo.save(
       repo.create({
@@ -107,6 +134,9 @@ describe('migrations', () => {
     const ds = await migratedDataSource(revertPath);
     const tableNames = async () =>
       (await ds.query(`SELECT name FROM sqlite_master WHERE type = 'table'`)).map((t: { name: string }) => t.name);
+    // First revert the new user-name migration.
+    await ds.undoLastMigration();
+    expect(await ds.query('PRAGMA table_info(users)')).not.toContainEqual(expect.objectContaining({ name: 'name' }));
     await ds.undoLastMigration();
     expect(await tableNames()).not.toContain('case_jurors');
     expect(await tableNames()).toContain('cases');

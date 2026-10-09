@@ -69,22 +69,26 @@ export const toCaseOut = (c: Case): CaseOut => ({
   updatedAt: c.updatedAt,
 });
 
+export interface CaseDetailOut extends CaseOut {
+  jurors: JurorOut[];
+}
+
 export interface JurorOut {
-  userId: number;
-  email: string;
+  jurorId: number;
+  name: string;
   drawnAt: Date;
   deadline: Date;
 }
 
 /** Expects `user` to be loaded. */
 export const toJurorOut = (j: CaseJuror): JurorOut => ({
-  userId: j.userId,
-  email: j.user.email,
+  jurorId: j.userId,
+  name: j.user.name,
   drawnAt: j.drawnAt,
   deadline: j.deadline,
 });
 
 export interface DrawOut {
-  case: CaseOut;
+  case: CaseDetailOut;
   jurors: JurorOut[];
 }
