@@ -15,7 +15,19 @@ export const SEED_USERS: Record<string, Array<'admin' | 'creator' | 'juror'>> = 
   'user@example.com': [],
 };
 
-/** Idempotent: existing users are left untouched (roles included). */
+const SEED_NAMES: Record<string, string> = {
+  'admin@example.com': 'Admin',
+  'creator1@example.com': 'Creator 1',
+  'creator2@example.com': 'Creator 2',
+  'juror1@example.com': 'Juror 1',
+  'juror2@example.com': 'Juror 2',
+  'juror3@example.com': 'Juror 3',
+  'juror4@example.com': 'Juror 4',
+  'juror5@example.com': 'Juror 5',
+  'user@example.com': 'User',
+};
+
+/** Idempotent: existing users are left untouched (roles and names included). */
 export async function seedUsers(dataSource: DataSource): Promise<{ created: number; existing: number }> {
   const repo = dataSource.getRepository(User);
   let created = 0;
@@ -23,6 +35,7 @@ export async function seedUsers(dataSource: DataSource): Promise<{ created: numb
     if (await repo.existsBy({ email })) continue;
     await repo.insert({
       email,
+      name: SEED_NAMES[email],
       isAdmin: extra.includes('admin'),
       isCreator: extra.includes('creator'),
       isJuror: extra.includes('juror'),

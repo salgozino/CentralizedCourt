@@ -64,6 +64,13 @@ be able to resume from here.
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
 
+## User names prerequisite
+
+- Added nullable `User.name` (varchar 200) with an additive, reversible migration; existing users keep their data and have null names.
+- Fresh seeds have basic names (Admin, Creator 1/2, Juror 1–5, User). Existing seeded users remain untouched, including names; reset the local development DB if fresh named fixtures are desired.
+- No user-creation endpoint exists; name entry/management is deferred. Case creation is unchanged.
+- Checks: `make test` passed (153 backend, 94 frontend, 69 contract). First run hit two frontend 5-second timeouts; the unchanged rerun passed.
+
 ## Next
 
 1. Vote casting (slice 4): needs a spec (endpoint shape, injected clock, tie rule) before the red
@@ -73,6 +80,9 @@ be able to resume from here.
 3. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 
 ## Open questions / decisions pending
+
+- Product decision: the juror role must not be removable. The current admin roles endpoint still permits removal; enforcing this is explicitly out of scope for the juror-read work and must be addressed later.
+- Juror reads: owner (WIPO), admin and assigned jurors can read cases. Lists omit panels; detail and draw's nested case expose the full panel (`jurorId`, `name`, `drawnAt`, `deadline`). Draw juror output must not expose email. Assigned access is based on assignment, not current role.
 
 - Rule: an admin can do everything a creator can (and every admin action), without needing the
   extra role flags. Exception: an admin can never be drawn, assigned or vote as a juror, even
