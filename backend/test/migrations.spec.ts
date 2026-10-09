@@ -33,6 +33,21 @@ describe('migrations', () => {
     expect(dataSourceOptions(dbPath).synchronize).toBe(false);
   });
 
+  it('adds a nullable name column and round-trips a user name', async () => {
+    const columns = await dataSource.query('PRAGMA table_info(users)');
+    expect(columns).toContainEqual(expect.objectContaining({ name: 'name', notnull: 0 }));
+    // Raw SQL keeps this red test executable before the entity gains the field.
+    await dataSource.query('INSERT INTO users (email, name) VALUES (?, ?)', ['named@example.com', 'Alice']);
+    expect(await dataSource.getRepository(User).findOneByOrFail({ email: 'named@example.com' })).toMatchObject({
+      name: 'Alice',
+    });
+    await dataSource.undoLastMigration();
+    expect(await dataSource.query('PRAGMA table_info(users)')).not.toContainEqual(
+      expect.objectContaining({ name: 'name' }),
+    );
+    await dataSource.runMigrations();
+  });
+
   it('applies the User defaults', async () => {
     const user = await dataSource.getRepository(User).save({ email: 'a@example.com' });
     const stored = await dataSource.getRepository(User).findOneByOrFail({ id: user.id });
@@ -107,6 +122,9 @@ describe('migrations', () => {
     const ds = await migratedDataSource(revertPath);
     const tableNames = async () =>
       (await ds.query(`SELECT name FROM sqlite_master WHERE type = 'table'`)).map((t: { name: string }) => t.name);
+    // First revert the new user-name migration.
+    await ds.undoLastMigration();
+    expect(await ds.query('PRAGMA table_info(users)')).not.toContainEqual(expect.objectContaining({ name: 'name' }));
     await ds.undoLastMigration();
     expect(await tableNames()).not.toContain('case_jurors');
     expect(await tableNames()).toContain('cases');
