@@ -95,6 +95,23 @@ test('a deep-linked detail loads directly and displays a resolved result', async
   expect(mocks.listCases).not.toHaveBeenCalled();
 });
 
+test.each([
+  { label: 'case owner', id: 2, roles: ['creator', 'user'], visible: true },
+  { label: 'owner without the creator role', id: 2, roles: ['user'], visible: true },
+  { label: 'non-owner admin', id: 1, roles: ['admin', 'user'], visible: true },
+  { label: 'another creator', id: 3, roles: ['creator', 'user'], visible: false },
+  { label: 'juror', id: 4, roles: ['juror', 'user'], visible: false },
+  { label: 'plain user', id: 8, roles: ['user'], visible: false },
+])('Draw jurors visibility for $label', async ({ id, roles, visible }) => {
+  window.history.replaceState(null, '', '/cases/42');
+  vi.mocked(api.getMe).mockResolvedValue({ id, email: `${id}@example.com`, roles });
+  render(<App />);
+  expect(await screen.findByRole('heading', { name: stored.title })).toBeInTheDocument();
+  const button = screen.queryByRole('button', { name: 'Draw jurors' });
+  if (visible) expect(button).toBeInTheDocument();
+  else expect(button).not.toBeInTheDocument();
+});
+
 test('detail loading, 404 and retryable errors are distinct', async () => {
   window.history.replaceState(null, '', '/cases/42');
   let reject!: (error: Error) => void;
