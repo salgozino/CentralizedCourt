@@ -71,12 +71,20 @@ be able to resume from here.
 - No user-creation endpoint exists; name entry/management is deferred. Case creation is unchanged.
 - Checks: `make test` passed (153 backend, 94 frontend, 69 contract). First run hit two frontend 5-second timeouts; the unchanged rerun passed.
 
+## Juror-read backend follow-up
+
+- `GET /api/cases`: admin sees all, owner sees owned, assigned juror sees assigned cases; same ordering, no duplicates and no panel in list DTOs.
+- `GET /api/cases/:id`: same visibility; full panel in position order, empty before draw. Hidden/missing/invalid cases remain 404; anonymous remains 401. Reads need no CSRF.
+- Detail and draw's nested `case` include `jurors: [{jurorId, name, drawnAt, deadline}]`. Draw's top-level panel uses the same DTO: no email. `jurorId` is the user's ID, not the assignment row ID. Existing users without names return null (never an email fallback).
+- `POST /api/cases` stays unchanged. No frontend files changed. The frontend draw adapter/component still expects `userId` and `email`: update it to this new backend contract in the next frontend task (mocked frontend tests do not verify live compatibility).
+- Evidence: red commit `7c532d1`; backend red run had 8 failures. The contract red run included expected draw failures, but cases contract compilation was blocked by an unsupported helper option; that test option was corrected during green implementation.
+- Checks: `make test` passes (161 backend, 94 frontend, 70 contract); automated HTTP tests cover owner/admin/assigned vs unrelated creator/juror/user, anonymous, privacy and panel ordering. Separate live curl skill verification requires the user's backend URL and stdout log path; not run.
+
 ## Next
 
 1. Vote casting (slice 4): needs a spec (endpoint shape, injected clock, tie rule) before the red
    tests. Write the end-to-end acceptance test skeleton (HTTP calls only) with it.
-2. Slice 3 remaining: expose drawn jurors in case reads (list/detail visibility for assigned jurors)
-   and the UI (draw button, manual picker, per-juror deadline), which closes slice 3 row 3.
+2. Slice 3 remaining: align the frontend draw DTO with the new private-safe backend panel; render persisted jurors from detail and their deadlines. Manual picker remains pending.
 3. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 
 ## Open questions / decisions pending

@@ -60,11 +60,11 @@ describe('cases create/list/detail contract', () => {
       })),
     );
     for (const browser of [owner, admin, await new Client().login('juror1@example.com')]) {
-      const detail = await browser.get(`/api/cases/${id}`, { csrf: false, origin: null });
+      const detail = await browser.get(`/api/cases/${id}`, { csrf: false });
       expect(detail.status).toBe(200);
       expect(detail.body).toEqual(draw.body.case);
       expect(detail.body.jurors).toEqual(draw.body.jurors);
-      const list = await browser.get('/api/cases', { csrf: false, origin: null });
+      const list = await browser.get('/api/cases', { csrf: false });
       expect(list.status).toBe(200);
       expect(list.body).toContainEqual(expect.objectContaining({ id }));
       for (const row of list.body) expect(row).not.toHaveProperty('jurors');
