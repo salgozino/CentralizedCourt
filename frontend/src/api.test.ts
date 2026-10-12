@@ -120,8 +120,8 @@ test('drawJurors returns the case and the drawn jurors', async () => {
   const result = {
     case: { id: 7, creatorId: 2, status: 'voting', result: null },
     jurors: [
-      { userId: 3, email: 'j1@b.c', drawnAt: '2026-10-08T10:00:00.000Z', deadline: '2026-10-08T10:02:00.000Z' },
-      { userId: 5, email: 'j2@b.c', drawnAt: '2026-10-08T10:00:00.000Z', deadline: '2026-10-08T10:02:00.000Z' },
+      { jurorId: 3, name: 'Juror 1', drawnAt: '2026-10-08T10:00:00.000Z', deadline: '2026-10-08T10:02:00.000Z' },
+      { jurorId: 5, name: 'Juror 2', drawnAt: '2026-10-08T10:00:00.000Z', deadline: '2026-10-08T10:02:00.000Z' },
     ],
   };
   fetchMock.mockResolvedValue(json(200, result));

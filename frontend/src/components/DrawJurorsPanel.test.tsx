@@ -49,6 +49,7 @@ test('draws a random jury, shows the pending state, then the case as voting with
         resolve = r;
       }),
   );
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
   const { user } = await setup();
   expect(screen.getAllByText('Awaiting jurors').length).toBeGreaterThan(0);
   await user.click(screen.getByRole('button', { name: 'Draw jurors' }));
@@ -60,9 +61,13 @@ test('draws a random jury, shows the pending state, then the case as voting with
   const items = within(list).getAllByRole('listitem');
   expect(items).toHaveLength(drawResult.jurors.length);
   drawResult.jurors.forEach((juror, i) => {
-    expect(items[i]).toHaveTextContent(juror.email);
+    expect(items[i]).toHaveTextContent(juror.name);
     expect(items[i]).toHaveTextContent(new Date(juror.deadline).toLocaleString());
+    expect(items[i]).not.toHaveTextContent(/undefined|@/);
   });
+  const keyWarnings = consoleError.mock.calls.filter((args) => String(args[0]).includes('unique "key"'));
+  expect(keyWarnings).toEqual([]);
+  consoleError.mockRestore();
   expect(screen.getAllByText('Voting').length).toBeGreaterThan(0);
   expect(screen.queryByText('Awaiting jurors')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Draw/ })).not.toBeInTheDocument();

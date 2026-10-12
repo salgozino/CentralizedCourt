@@ -15,24 +15,25 @@ export const votingCase: Case = {
   updatedAt: '2026-10-08T10:00:00.000Z',
 };
 
+/** Same shape as the backend `DrawOut`: jurors carry `jurorId` and `name`, never an email. */
 export const drawResult: DrawResult = {
   case: votingCase,
   jurors: [
     {
-      userId: 5,
-      email: 'juror1@example.com',
+      jurorId: 5,
+      name: 'Juror 1',
       drawnAt: '2026-10-08T10:00:00.000Z',
       deadline: '2026-10-09T10:00:00.000Z',
     },
     {
-      userId: 8,
-      email: 'juror4@example.com',
+      jurorId: 8,
+      name: 'Juror 4',
       drawnAt: '2026-10-08T10:00:00.000Z',
       deadline: '2026-10-09T10:00:00.000Z',
     },
     {
-      userId: 6,
-      email: 'juror2@example.com',
+      jurorId: 6,
+      name: 'Juror 2',
       drawnAt: '2026-10-08T10:00:00.000Z',
       deadline: '2026-10-09T10:00:00.000Z',
     },
