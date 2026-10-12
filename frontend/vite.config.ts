@@ -13,7 +13,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': { target: 'http://localhost:8000', xfwd: true },
+      // API_PROXY_TARGET lets the e2e suite point Vite at its own backend.
+      '/api': { target: process.env.API_PROXY_TARGET ?? 'http://localhost:8000', xfwd: true },
     },
   },
 });

@@ -1,21 +1,24 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Button } from '@kleros/ui-components-library';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { getCase, type Case } from '../api';
+import { getCase, type Case, type CaseDetail, type User } from '../api';
 import { formatDuration } from '../cases/duration';
 import { useCaseRead } from '../cases/useCaseRead';
 import { STATUS_LABELS } from '../cases/presentation';
 import CaseStatusBadge from './CaseStatusBadge';
+import DrawJurorsPanel from './DrawJurorsPanel';
 
 const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
 
-export default function CaseDetailPage({ onUnauthorized }: Readonly<{ onUnauthorized: () => void }>) {
+export default function CaseDetailPage({ user, onUnauthorized }: Readonly<{ user: User; onUnauthorized: () => void }>) {
   const { id = '' } = useParams();
   const location = useLocation();
   // The just-created response is authoritative and avoids an unnecessary second request.
   const created = (location.state as { created?: Case } | null)?.created;
   const load = useCallback(
-    () => (created && String(created.id) === id ? Promise.resolve(created) : getCase(id)),
+    // A new case has no panel yet; the create response does not carry one.
+    (): Promise<CaseDetail> =>
+      created && String(created.id) === id ? Promise.resolve({ ...created, jurors: [] }) : getCase(id),
     [id, created],
   );
   const { state, retry } = useCaseRead(load, onUnauthorized);
@@ -41,12 +44,21 @@ export default function CaseDetailPage({ onUnauthorized }: Readonly<{ onUnauthor
           <Button text="Retry" variant="secondary" onPress={retry} />
         </div>
       )}
-      {state.kind === 'ready' && <CaseDetail value={state.data} justCreated={!!created} />}
+      {state.kind === 'ready' && (
+        <CaseDetail value={state.data} user={user} justCreated={!!created} onUnauthorized={onUnauthorized} />
+      )}
     </div>
   );
 }
 
-function CaseDetail({ value: c, justCreated }: Readonly<{ value: Case; justCreated: boolean }>) {
+function CaseDetail({
+  value,
+  user,
+  justCreated,
+  onUnauthorized,
+}: Readonly<{ value: CaseDetail; user: User; justCreated: boolean; onUnauthorized: () => void }>) {
+  // A successful draw returns the updated case; it replaces the loaded one.
+  const [c, setCase] = useState(value);
   const fields = [
     ['Case ID', `#${c.id}`],
     ['Creator ID', `#${c.creatorId}`],
@@ -107,8 +119,14 @@ function CaseDetail({ value: c, justCreated }: Readonly<{ value: Case; justCreat
           ))}
         </dl>
       </section>
+      <DrawJurorsPanel
+        value={c}
+        canDraw={user.id === c.creatorId || user.roles.includes('admin')}
+        onDrawn={(result) => setCase(result.case)}
+        onUnauthorized={onUnauthorized}
+      />
       <p className="text-sm text-klerosUIComponentsSecondaryText">
-        Cases cannot be edited or deleted. Juror assignment and voting will be available in later slices.
+        Cases cannot be edited or deleted. Voting will be available in a later slice.
       </p>
     </article>
   );

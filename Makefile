@@ -1,15 +1,16 @@
-.PHONY: setup lint dev-backend dev-frontend test test-contract test-backend migrate seed
+.PHONY: setup lint dev-backend dev-frontend test test-contract test-e2e test-backend migrate seed
 
 setup:
 	yarn install
 	cd backend && yarn install
 	cd frontend && yarn install
 	cd contract-tests && yarn install
+	cd e2e && yarn install && yarn playwright install chromium
 
 # Zero-warning gate, same checks as the pre-commit hook but over the whole repo.
 lint:
 	yarn prettier --check .
-	yarn eslint --max-warnings 0 backend contract-tests
+	yarn eslint --max-warnings 0 backend contract-tests e2e
 	cd frontend && yarn lint
 
 dev-backend:
@@ -22,10 +23,15 @@ test:
 	cd backend && yarn test
 	cd frontend && yarn test
 	cd contract-tests && yarn test
+	cd e2e && yarn test
 
 # Black-box HTTP contract suite; boots backend/ on a temp DB.
 test-contract:
 	cd contract-tests && yarn test
+
+# Browser e2e (Playwright): boots backend/ on a temp DB and Vite against it.
+test-e2e:
+	cd e2e && yarn test
 
 test-backend:
 	cd backend && yarn test

@@ -36,7 +36,15 @@ function setup(canCreate = true) {
       <Routes>
         <Route path="/cases/*" element={<CasesSection canCreate={canCreate} onUnauthorized={onUnauthorized} />} />
         <Route path="/cases/new" element={<NewCasePage canCreate={canCreate} onUnauthorized={onUnauthorized} />} />
-        <Route path="/cases/:id" element={<CaseDetailPage onUnauthorized={onUnauthorized} />} />
+        <Route
+          path="/cases/:id"
+          element={
+            <CaseDetailPage
+              user={{ id: 2, email: 'owner@example.com', roles: ['creator', 'user'] }}
+              onUnauthorized={onUnauthorized}
+            />
+          }
+        />
       </Routes>
     </MemoryRouter>,
   );

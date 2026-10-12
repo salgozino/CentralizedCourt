@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Case, CaseStatus, SELECTION_METHODS, SelectionMethod } from '../entities';
+import { Case, CaseJuror, CaseStatus, SELECTION_METHODS, SelectionMethod } from '../entities';
 
 export const MIN_VOTE_WINDOW_SECONDS = 60;
 export const MAX_VOTE_WINDOW_SECONDS = 30 * 24 * 60 * 60;
@@ -28,6 +28,16 @@ export const CreateCaseIn = z.strictObject({
   selectionMethod: z.enum(SELECTION_METHODS).default('random'),
 });
 export type CreateCaseIn = z.infer<typeof CreateCaseIn>;
+
+/** Empty for random cases; manual cases list exactly panelSize distinct user ids, in panel order. */
+export const DrawIn = z.strictObject({
+  jurorIds: z
+    .array(z.number().int().positive())
+    .max(MAX_PANEL_SIZE)
+    .refine((ids) => new Set(ids).size === ids.length, 'Juror ids must be distinct')
+    .optional(),
+});
+export type DrawIn = z.infer<typeof DrawIn>;
 
 export interface CaseOut {
   id: number;
@@ -58,3 +68,27 @@ export const toCaseOut = (c: Case): CaseOut => ({
   createdAt: c.createdAt,
   updatedAt: c.updatedAt,
 });
+
+export interface CaseDetailOut extends CaseOut {
+  jurors: JurorOut[];
+}
+
+export interface JurorOut {
+  jurorId: number;
+  name: string;
+  drawnAt: Date;
+  deadline: Date;
+}
+
+/** Expects `user` to be loaded. */
+export const toJurorOut = (j: CaseJuror): JurorOut => ({
+  jurorId: j.userId,
+  name: j.user.name,
+  drawnAt: j.drawnAt,
+  deadline: j.deadline,
+});
+
+export interface DrawOut {
+  case: CaseDetailOut;
+  jurors: JurorOut[];
+}

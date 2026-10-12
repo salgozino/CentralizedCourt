@@ -52,7 +52,7 @@ describe('admin users over HTTP', () => {
   it('answers 403 for a non-admin before validating the body', async () => {
     const user = await new Browser(booted).login('user@example.com');
     const res = await user.put(rolesUrl(idOf('user@example.com')), { roles: ['admin'] });
-    expect(res.body).toEqual({ detail: 'Admin role required' });
+    expect(res.body).toEqual({ detail: 'Only admins can manage users' });
   });
 
   it('answers 422 for a non-numeric user id and 404 for an unknown one', async () => {

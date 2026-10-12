@@ -35,7 +35,7 @@ The harness runs `yarn build` in `backend/` once, then `node dist/cli/migrate.js
 | Case | Status | Body |
 | --- | --- | --- |
 | Anonymous `/api/me`, `/api/admin/*` | 401 | `{"detail": "Unauthorized"}` |
-| Non-admin on `/api/admin/*` | 403 | `{"detail": "Admin role required"}` |
+| Non-admin on `/api/admin/*` | 403 | `{"detail": "Only admins can manage users"}` |
 | Wrong/expired/foreign code | 401 | `{"detail": "Invalid or expired code"}` |
 | CSRF failure (missing token or untrusted Origin) | 403 | `{"detail": "CSRF check Failed"}` |
 | Unknown user id on PUT roles | 404 | `{"detail": "Not Found"}` |

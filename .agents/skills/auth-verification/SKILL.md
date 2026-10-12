@@ -35,13 +35,18 @@ Stop and ask for any that is missing; do not guess them from the code under test
 
 ## Steps
 
-1. **Log in** each role you need with the script next to this file:
+1. **Log in** each role you need with the script next to this file. Run it directly; never wrap it in `eval`,
+   and do not rely on shell variables surviving between commands:
 
    ```bash
-   export API_URL=http://localhost:8000 BACKEND_LOG=/tmp/backend.log
-   eval "$(.agents/skills/auth-verification/scripts/login-as.sh creator)"
-   # -> COOKIE_JAR and CSRF_TOKEN are set
+   BACKEND_LOG=/tmp/backend.log .agents/skills/auth-verification/scripts/login-as.sh creator
+   # COOKIE_JAR=/tmp/centralized-court-auth/creator1@example.com.jar
+   # CSRF_TOKEN=U2SKbtJh71rIrUXfT5uuuCznq0aJUa9l
    ```
+
+   Copy the printed `COOKIE_JAR` and `CSRF_TOKEN` values as literals into the curl commands below, so every
+   request in the transcript shows which session it used. Set `API_URL` the same way when the backend is not on
+   `http://localhost:8000`.
 
    Roles: `admin`, `creator`, `creator2`, `juror`, `juror2`, `user`, or any seeded email. The script reuses a live
    session, so calling it again is cheap. Exit codes: 2 usage/missing input, 3 backend down, 4 no login code,
@@ -53,17 +58,18 @@ Stop and ask for any that is missing; do not guess them from the code under test
 3. **Anonymous**, with the invalid body: expect 401.
 
    ```bash
-   curl -s -w ' %{http_code}\n' -X POST -H 'Content-Type: application/json' -d "$INVALID" "$API_URL/api/cases"
+   curl -s -w ' %{http_code}\n' -X POST -H 'Content-Type: application/json' -d '<invalid body>' http://localhost:8000/api/cases
    ```
 
 4. **CSRF** (unsafe methods only): as a role WITHOUT permission and as one WITH it, omit `X-CSRFToken`.
    Expect 403 `CSRF check Failed` both times (CSRF is checked before the role).
 
    ```bash
-   curl -s -w ' %{http_code}\n' -b "$COOKIE_JAR" -X POST -H 'Content-Type: application/json' -d "$INVALID" "$API_URL/api/cases"
+   curl -s -w ' %{http_code}\n' -b /tmp/centralized-court-auth/creator1@example.com.jar -X POST \
+     -H 'Content-Type: application/json' -d '<invalid body>' http://localhost:8000/api/cases
    ```
 
-5. **Role**: every role without permission, with `-H "X-CSRFToken: $CSRF_TOKEN"` and the invalid body. Expect
+5. **Role**: every role without permission, with `-H 'X-CSRFToken: <CSRF_TOKEN>'` and the invalid body. Expect
    403 with the role message (the role is checked before validation).
 
 6. **Validation**: an allowed role, with CSRF and the invalid body. Expect 422.

@@ -2,10 +2,10 @@
   "name": "centralized-court-tooling",
   "private": true,
   "version": "0.0.0",
-  "description": "Repo-level lint and git hook tooling. backend/, frontend/ and contract-tests/ are independent Yarn projects.",
+  "description": "Repo-level lint and git hook tooling. backend/, frontend/, contract-tests/ and e2e/ are independent Yarn projects.",
   "scripts": {
     "postinstall": "husky",
-    "lint": "prettier --check . && eslint --max-warnings 0 backend contract-tests && yarn --cwd frontend lint"
+    "lint": "prettier --check . && eslint --max-warnings 0 backend contract-tests e2e && yarn --cwd frontend lint"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.0.0",

@@ -56,7 +56,7 @@ function App() {
           path="/cases/:id"
           element={
             <AuthenticatedPage user={user} onLogout={onUnauthorized}>
-              <CaseDetailPage onUnauthorized={onUnauthorized} />
+              <CaseDetailPage user={user} onUnauthorized={onUnauthorized} />
             </AuthenticatedPage>
           }
         />

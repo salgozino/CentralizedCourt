@@ -47,19 +47,67 @@ be able to resume from here.
     `frontend/src/cases-routing.test.tsx`, form tests and API tests. `make test`: 133 backend,
     80 frontend and 66 contract tests pass; `make lint` passes. Frontend production build passes.
     Manual frontend/backend validation completed and approved by the user.
+- Slice 3 backend (draw), branch `feat/draw-vote`, commits `0f1ede8` (red), `a882342` (green):
+  - Entity `CaseJuror` (`case_jurors`, migration `CreateCaseJurors`): `caseId`, `userId`, `position`,
+    `drawnAt`, `deadline` (= `drawnAt` + `voteWindowSeconds`); unique (`caseId`, `userId`).
+  - API: `POST /api/cases/:id/draw` (session + CSRF) answers 200 `{case, jurors: [{userId, email,
+    drawnAt, deadline}]}` and moves the case to `voting`. Order: 401, 403 CSRF, 404 (missing/invalid
+    id), 403 `Only the case creator or an admin can draw jurors` (owner by `creatorId`), 422 body,
+    409 not `awaiting_jurors`, then 422 method checks / 409 `Not enough eligible jurors: N available,
+    M required`. Random cases take no body (`jurorIds` → 422); manual cases need exactly `panelSize`
+    distinct `jurorIds`, kept in the given order.
+  - Eligible juror = `isJuror && isActive && !isAdmin`. RNG: `DRAW_RNG` provider, `crypto.randomInt`
+    by default, seeded in tests; partial Fisher-Yates over the pool ordered by id.
+  - Evidence: `backend/test/draw.spec.ts`, `contract-tests/tests/draw.contract.test.ts`, live
+    auth-verification run. `make test`: 152 backend, 80 frontend, 69 contract tests; `make lint` passes.
 - Zero-warning lint gate: husky `pre-commit` (lint-staged: Prettier, ESLint, oxlint) and
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
 
+## Draw UI (branch `feat/draw-ui`, merged to master)
+
+- Random draw panel on case detail: adapter `drawJurors` (`2c41fc5`) and `DrawJurorsPanel` (`9e6375c`), merged in
+  `d507f01` and `7569a12` from a shared contract commit `48d15be`.
+- "Draw jurors" is shown only to the case creator or an admin (`798e63a` red, `28d0bda` green); the server 403
+  remains the real guard.
+- Juror reads backend merged in `01bbe09` (sections below).
+- Draw UI aligned with the backend juror DTO `{jurorId, name, drawnAt, deadline}` (`d8a5b12` red, green right
+  after): fixtures use the backend shape, and the panel test asserts names, no emails and no React key warnings.
+  Covered end to end by the Playwright suite in `e2e/` (`tests/draw.spec.ts`, part of `make test`); reverting the
+  fix makes it fail with the juror name missing.
+- Case detail shows the persisted panel (`CaseDetail = Case & { jurors }` from `GET /api/cases/:id`), so jurors and
+  deadlines survive a reload (`900c2f7` red, `8c9e88d` green); slice 3 row 3 is ✅.
+- Day 4 parallel-workstream log: `odd/tasks/multitask-workstreams.md` (local, git-ignored).
+
+## User names prerequisite
+
+- `User.name` is now required (varchar 200, NOT NULL, no default), and juror DTO names are strings. DB rejects omitted/null names and null updates. Required-name red commit: `f6c6aa6`.
+- The original `AddUserName` migration was revised for a fresh development DB, as explicitly approved. It requires an empty users table. An already-applied migration will not run again: reset the local DB (including SQLite sidecars, with the backend stopped), run `make migrate`, then `make seed` against the same DB path before restarting.
+- Fresh seeds have basic names (Admin, Creator 1/2, Juror 1–5, User). Existing seeded users remain untouched, including names.
+- No user-creation endpoint exists; name entry/management is deferred. Case creation is unchanged.
+- Checks after making names required: `make test` passed (162 backend, 94 frontend, 70 contract). Original nullable-name prerequisite also passed; its first run hit two frontend 5-second timeouts and the unchanged rerun passed.
+
+## Juror-read backend follow-up
+
+- `GET /api/cases`: admin sees all, owner sees owned, assigned juror sees assigned cases; same ordering, no duplicates and no panel in list DTOs.
+- `GET /api/cases/:id`: same visibility; full panel in position order, empty before draw. Hidden/missing/invalid cases remain 404; anonymous remains 401. Reads need no CSRF.
+- Detail and draw's nested `case` include `jurors: [{jurorId, name, drawnAt, deadline}]`. Draw's top-level panel uses the same DTO: no email. `jurorId` is the user's ID, not the assignment row ID. Names are required strings, never null and never an email fallback; reset previously migrated development databases as described above.
+- `POST /api/cases` stays unchanged. No frontend files changed. The frontend draw adapter/component still expects `userId` and `email`: update it to this new backend contract in the next frontend task (mocked frontend tests do not verify live compatibility).
+- Evidence: red commit `7c532d1`; backend red run had 8 failures. The contract red run included expected draw failures, but cases contract compilation was blocked by an unsupported helper option; that test option was corrected during green implementation.
+- Checks: `make test` passes (161 backend, 94 frontend, 70 contract); automated HTTP tests cover owner/admin/assigned vs unrelated creator/juror/user, anonymous, privacy and panel ordering. Live curl skill verification passed against `http://localhost:8001` using `/tmp/backend-w1.log` after the user applied the original name migration: owner/admin/assigned reads, hidden reads, no-CSRF reads, draw guard precedence, owner/admin draws, panel privacy/order and deadlines. Fixtures #1/#2 were created. That run preceded the NOT NULL change and showed null names in old fixtures; rerun after resetting/reseeding to verify live non-null names.
+
 ## Next
 
-1. Before slice 3, write the end-to-end acceptance test skeleton (only the HTTP calls) to fix the
-   API shape of draw and vote.
-2. Slice 3: the draw is an explicit step after creation (also needed for manual selection, after
-   asking the juror whether they accept). Each juror's deadline = draw time + `voteWindowSeconds`.
-   Validate `panelSize` against the eligible jurors at draw time, not at creation.
+1. Vote casting (slice 4): needs a spec (endpoint shape, injected clock, tie rule) before the red
+   tests. Write the end-to-end acceptance test skeleton (HTTP calls only) with it.
+2. Slice 3 is closed in `ACCEPTANCE.md`. Manual juror picker UI remains pending (not an acceptance criterion).
+3. Local DB was reset on 2026-10-12 (`make migrate` + `make seed`: 4 migrations, 9 named users).
+4. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 
 ## Open questions / decisions pending
+
+- Product decision: the juror role must not be removable. The current admin roles endpoint still permits removal; enforcing this is explicitly out of scope for the juror-read work and must be addressed later.
+- Juror reads: owner (WIPO), admin and assigned jurors can read cases. Lists omit panels; detail and draw's nested case expose the full panel (`jurorId`, `name`, `drawnAt`, `deadline`). Draw juror output must not expose email. Assigned access is based on assignment, not current role.
 
 - Rule: an admin can do everything a creator can (and every admin action), without needing the
   extra role flags. Exception: an admin can never be drawn, assigned or vote as a juror, even
@@ -71,6 +119,8 @@ be able to resume from here.
 - Evidence (deferred, separate migration): PDF URLs added AFTER the case is created and BEFORE the
   draw, only by the creator or an admin; not part of `POST /api/cases`. Decide then whether a plain
   `string[]` is enough or each item needs `addedBy`/`addedAt` (audit log, concurrent appends).
+- Draw by a non-owner of an existing case answers 403 (not 404), which reveals that the case
+  exists; chosen to match the spec. Revisit if case ids must stay private.
 - Panel larger than the juror pool (e.g. 7 requested, 5 jurors): to be solved later by giving
   jurors multiple votes once the pool grows. Today `panelSize` means number of jurors, one vote
   each. A case can stay in `awaiting_jurors` forever since there is no cancel.

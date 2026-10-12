@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { ApiError, createCase, getCase, getMe, listCases, setUserRoles, verifyCode } from './api';
+import { ApiError, createCase, drawJurors, getCase, getMe, listCases, setUserRoles, verifyCode } from './api';
 
 const fetchMock = vi.fn();
 
@@ -102,4 +102,40 @@ test('createCase POSTs the case with CSRF and returns the created case', async (
   expect(init.method).toBe('POST');
   expect(new Headers(init.headers).get('X-CSRFToken')).toBe('abc123');
   expect(JSON.parse(init.body)).toEqual(input);
+});
+
+test('drawJurors POSTs to the draw endpoint with CSRF and no body', async () => {
+  fetchMock.mockResolvedValue(json(200, { case: { id: 7 }, jurors: [] }));
+  await drawJurors(7);
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe('/api/cases/7/draw');
+  expect(init.method).toBe('POST');
+  expect(init.credentials).toBe('same-origin');
+  expect(new Headers(init.headers).get('X-CSRFToken')).toBe('abc123');
+  expect(new Headers(init.headers).get('Content-Type')).toBeNull();
+  expect(init.body).toBeUndefined();
+});
+
+test('drawJurors returns the case and the drawn jurors', async () => {
+  const result = {
+    case: { id: 7, creatorId: 2, status: 'voting', result: null },
+    jurors: [
+      { jurorId: 3, name: 'Juror 1', drawnAt: '2026-10-08T10:00:00.000Z', deadline: '2026-10-08T10:02:00.000Z' },
+      { jurorId: 5, name: 'Juror 2', drawnAt: '2026-10-08T10:00:00.000Z', deadline: '2026-10-08T10:02:00.000Z' },
+    ],
+  };
+  fetchMock.mockResolvedValue(json(200, result));
+  await expect(drawJurors(7)).resolves.toEqual(result);
+});
+
+test.each([
+  [403, 'Only the case creator or an admin can draw jurors'],
+  [404, 'Case not found'],
+  [409, 'Not enough eligible jurors: 1 available, 3 required'],
+  [422, [{ loc: ['params', 'id'], msg: 'Expected number' }]],
+] as const)('drawJurors rejects with ApiError on %i carrying the detail', async (status, detail) => {
+  fetchMock.mockResolvedValue(json(status, { detail }));
+  const err = await drawJurors(7).catch((e) => e);
+  expect(err).toBeInstanceOf(ApiError);
+  expect(err).toMatchObject({ status, detail });
 });

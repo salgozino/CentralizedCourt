@@ -38,6 +38,8 @@ export interface BootedApp {
 export interface BootOptions {
   imports?: ModuleMetadata['imports'];
   controllers?: ModuleMetadata['controllers'];
+  /** Provider values replaced in the app (e.g. a seeded RNG). */
+  overrides?: { provide: string | symbol; useValue: unknown }[];
 }
 
 export async function bootApp(extra: BootOptions = {}): Promise<BootedApp> {
@@ -47,10 +49,12 @@ export async function bootApp(extra: BootOptions = {}): Promise<BootedApp> {
   process.env.DB_PATH = dbPath;
   // ConfigModule.forRoot validates while app.module is imported, so env must be set first.
   const { AppModule } = await import('../src/app.module');
-  const moduleRef = await Test.createTestingModule({
+  const moduleBuilder = Test.createTestingModule({
     imports: [AppModule, ...(extra.imports ?? [])],
     controllers: extra.controllers ?? [],
-  }).compile();
+  });
+  for (const { provide, useValue } of extra.overrides ?? []) moduleBuilder.overrideProvider(provide).useValue(useValue);
+  const moduleRef = await moduleBuilder.compile();
   const app = moduleRef.createNestApplication(APP_OPTIONS);
   configureApp(app);
   await app.init();
