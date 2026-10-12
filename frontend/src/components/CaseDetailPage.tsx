@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Button } from '@kleros/ui-components-library';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { getCase, type Case, type User } from '../api';
+import { getCase, type Case, type CaseDetail, type User } from '../api';
 import { formatDuration } from '../cases/duration';
 import { useCaseRead } from '../cases/useCaseRead';
 import { STATUS_LABELS } from '../cases/presentation';
@@ -16,7 +16,9 @@ export default function CaseDetailPage({ user, onUnauthorized }: Readonly<{ user
   // The just-created response is authoritative and avoids an unnecessary second request.
   const created = (location.state as { created?: Case } | null)?.created;
   const load = useCallback(
-    () => (created && String(created.id) === id ? Promise.resolve(created) : getCase(id)),
+    // A new case has no panel yet; the create response does not carry one.
+    (): Promise<CaseDetail> =>
+      created && String(created.id) === id ? Promise.resolve({ ...created, jurors: [] }) : getCase(id),
     [id, created],
   );
   const { state, retry } = useCaseRead(load, onUnauthorized);
@@ -54,7 +56,7 @@ function CaseDetail({
   user,
   justCreated,
   onUnauthorized,
-}: Readonly<{ value: Case; user: User; justCreated: boolean; onUnauthorized: () => void }>) {
+}: Readonly<{ value: CaseDetail; user: User; justCreated: boolean; onUnauthorized: () => void }>) {
   // A successful draw returns the updated case; it replaces the loaded one.
   const [c, setCase] = useState(value);
   const fields = [

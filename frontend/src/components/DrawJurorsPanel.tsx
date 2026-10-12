@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@kleros/ui-components-library';
-import { ApiError, drawJurors, type Case, type DrawResult, type DrawnJuror, type ValidationIssue } from '../api';
+import { ApiError, drawJurors, type CaseDetail, type DrawResult, type DrawnJuror, type ValidationIssue } from '../api';
 
 const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
 const GENERIC_ERROR = 'Could not draw jurors. Please try again.';
@@ -19,16 +19,15 @@ export default function DrawJurorsPanel({
   onDrawn,
   onUnauthorized,
 }: Readonly<{
-  value: Case;
+  value: CaseDetail;
   canDraw: boolean;
   onDrawn: (result: DrawResult) => void;
   onUnauthorized: () => void;
 }>) {
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [jurors, setJurors] = useState<DrawnJuror[] | null>(null);
 
-  if (jurors) return <DrawnJurorsList jurors={jurors} />;
+  if (c.jurors.length > 0) return <DrawnJurorsList jurors={c.jurors} />;
   if (c.status !== 'awaiting_jurors') return null;
   if (c.selectionMethod === 'manual')
     return (
@@ -43,7 +42,6 @@ export default function DrawJurorsPanel({
     setError(null);
     try {
       const result = await drawJurors(c.id);
-      setJurors(result.jurors);
       onDrawn(result);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) onUnauthorized();

@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, test, vi } from 'vitest';
 import App from './App';
-import { ApiError, type Case } from './api';
+import { ApiError, type Case, type CaseDetail } from './api';
 
 vi.mock('./api', async (orig) => ({
   ...(await orig<typeof import('./api')>()),
@@ -28,13 +28,15 @@ const stored: Case = {
   createdAt: '2026-10-08T12:00:00Z',
   updatedAt: '2026-10-08T12:00:00Z',
 };
+// `GET /api/cases/:id` also returns the panel (empty before the draw); list and create responses do not.
+const storedDetail: CaseDetail = { ...stored, jurors: [] };
 const mocks = api as typeof api & { listCases: ReturnType<typeof vi.fn>; getCase: ReturnType<typeof vi.fn> };
 beforeEach(() => {
   vi.clearAllMocks();
   window.history.replaceState(null, '', '/cases');
   vi.mocked(api.getMe).mockResolvedValue({ id: 2, email: 'creator1@example.com', roles: ['creator', 'user'] });
   mocks.listCases.mockReset().mockResolvedValue([stored]);
-  mocks.getCase.mockReset().mockResolvedValue(stored);
+  mocks.getCase.mockReset().mockResolvedValue(storedDetail);
   vi.mocked(api.createCase).mockReset().mockResolvedValue(stored);
 });
 
@@ -87,7 +89,7 @@ test.each([new TypeError('Network'), new ApiError(500, 'Server')])('list failure
 
 test('a deep-linked detail loads directly and displays a resolved result', async () => {
   window.history.replaceState(null, '', '/cases/42');
-  mocks.getCase.mockResolvedValue({ ...stored, status: 'resolved', result: 'Refund' });
+  mocks.getCase.mockResolvedValue({ ...storedDetail, status: 'resolved', result: 'Refund' });
   render(<App />);
   expect(await screen.findByRole('heading', { name: 'Refund dispute' })).toBeInTheDocument();
   expect(screen.getAllByText('Resolved').length).toBeGreaterThan(0);

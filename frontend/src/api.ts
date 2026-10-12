@@ -25,8 +25,11 @@ export type Case = NewCase & {
 /** A seated juror as the backend returns it: `jurorId` is the user's id; no email is exposed. */
 export type DrawnJuror = { jurorId: number; name: string; drawnAt: string; deadline: string };
 
+/** Body of `GET /api/cases/:id`: the case plus its seated panel in draw order (empty before the draw). */
+export type CaseDetail = Case & { jurors: DrawnJuror[] };
+
 /** Body of `POST /api/cases/:id/draw` (200): the case, now `voting`, and the drawn panel in order. */
-export type DrawResult = { case: Case; jurors: DrawnJuror[] };
+export type DrawResult = { case: CaseDetail; jurors: DrawnJuror[] };
 
 /** One entry of a 422 body: `loc` is e.g. ['body', 'payload', 'outcomes', 1]. */
 export type ValidationIssue = { loc: Array<string | number>; msg: string };
@@ -109,7 +112,7 @@ export async function listCases(): Promise<Case[]> {
   return (await request('GET', '/cases')).json();
 }
 
-export async function getCase(id: string): Promise<Case> {
+export async function getCase(id: string): Promise<CaseDetail> {
   return (await request('GET', `/cases/${encodeURIComponent(id)}`)).json();
 }
 
