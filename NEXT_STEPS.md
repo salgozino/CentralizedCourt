@@ -64,7 +64,7 @@ be able to resume from here.
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
 
-## Draw UI (branch `feat/draw-ui`, not merged to master)
+## Draw UI (branch `feat/draw-ui`, merged to master)
 
 - Random draw panel on case detail: adapter `drawJurors` (`2c41fc5`) and `DrawJurorsPanel` (`9e6375c`), merged in
   `d507f01` and `7569a12` from a shared contract commit `48d15be`.
@@ -75,6 +75,8 @@ be able to resume from here.
   after): fixtures use the backend shape, and the panel test asserts names, no emails and no React key warnings.
   Covered end to end by the Playwright suite in `e2e/` (`tests/draw.spec.ts`, part of `make test`); reverting the
   fix makes it fail with the juror name missing.
+- Case detail shows the persisted panel (`CaseDetail = Case & { jurors }` from `GET /api/cases/:id`), so jurors and
+  deadlines survive a reload (`900c2f7` red, `8c9e88d` green); slice 3 row 3 is ✅.
 - Day 4 parallel-workstream log: `odd/tasks/multitask-workstreams.md` (local, git-ignored).
 
 ## User names prerequisite
@@ -98,8 +100,7 @@ be able to resume from here.
 
 1. Vote casting (slice 4): needs a spec (endpoint shape, injected clock, tie rule) before the red
    tests. Write the end-to-end acceptance test skeleton (HTTP calls only) with it.
-2. Slice 3 remaining: render persisted jurors and deadlines from the case detail (`jurors` field, not yet in the
-   frontend `Case` type), which closes slice 3 row 3 in `ACCEPTANCE.md`. Manual picker remains pending.
+2. Slice 3 is closed in `ACCEPTANCE.md`. Manual juror picker UI remains pending (not an acceptance criterion).
 3. Local DB was reset on 2026-10-12 (`make migrate` + `make seed`: 4 migrations, 9 named users).
 4. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 
