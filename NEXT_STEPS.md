@@ -64,6 +64,18 @@ be able to resume from here.
   `commit-msg` (commitlint, Conventional Commits); `make lint`.
 - Agent instructions in `AGENTS.md` (how to set up, run, lint and test the app).
 
+## Draw UI (branch `feat/draw-ui`, not merged to master)
+
+- Random draw panel on case detail: adapter `drawJurors` (`2c41fc5`) and `DrawJurorsPanel` (`9e6375c`), merged in
+  `d507f01` and `7569a12` from a shared contract commit `48d15be`.
+- "Draw jurors" is shown only to the case creator or an admin (`798e63a` red, `28d0bda` green); the server 403
+  remains the real guard.
+- Juror reads backend merged in `01bbe09` (sections below).
+- Draw UI aligned with the backend juror DTO `{jurorId, name, drawnAt, deadline}` (`d8a5b12` red, green right
+  after): fixtures use the backend shape, and the panel test asserts names, no emails and no React key warnings.
+  Browser check against the real backend still pending.
+- Day 4 parallel-workstream log: `odd/tasks/multitask-workstreams.md` (local, git-ignored).
+
 ## User names prerequisite
 
 - `User.name` is now required (varchar 200, NOT NULL, no default), and juror DTO names are strings. DB rejects omitted/null names and null updates. Required-name red commit: `f6c6aa6`.
@@ -85,8 +97,10 @@ be able to resume from here.
 
 1. Vote casting (slice 4): needs a spec (endpoint shape, injected clock, tie rule) before the red
    tests. Write the end-to-end acceptance test skeleton (HTTP calls only) with it.
-2. Slice 3 remaining: align the frontend draw DTO with the new private-safe backend panel; render persisted jurors from detail and their deadlines. Manual picker remains pending.
-3. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
+2. Slice 3 remaining: render persisted jurors and deadlines from the case detail (`jurors` field, not yet in the
+   frontend `Case` type), which closes slice 3 row 3 in `ACCEPTANCE.md`. Manual picker remains pending.
+3. Local DB was reset on 2026-10-12 (`make migrate` + `make seed`: 4 migrations, 9 named users).
+4. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 
 ## Open questions / decisions pending
 
