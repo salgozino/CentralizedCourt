@@ -4,12 +4,25 @@ import importPlugin from 'eslint-plugin-import';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const tsFiles = ['backend/{src,test}/**/*.ts', 'contract-tests/{src,tests}/**/*.ts'];
+const tsFiles = [
+  'backend/{src,test}/**/*.ts',
+  'contract-tests/{src,tests}/**/*.ts',
+  'e2e/{src,tests}/**/*.ts',
+  'e2e/*.ts',
+];
 
 export default tseslint.config(
   {
     // dist and dependencies are build/vendor output; frontend is linted by oxlint.
-    ignores: ['**/dist/**', '**/node_modules/**', '**/.yarn/**', '**/coverage/**', 'frontend/**'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/.yarn/**',
+      '**/coverage/**',
+      'frontend/**',
+      'e2e/test-results/**',
+      'e2e/playwright-report/**',
+    ],
   },
   {
     files: tsFiles,
@@ -19,7 +32,7 @@ export default tseslint.config(
       globals: { ...globals.node, ...globals.jest },
       parserOptions: {
         // One tsconfig per package; backend needs its own because tsconfig.json only includes src.
-        project: ['backend/tsconfig.eslint.json', 'contract-tests/tsconfig.json'],
+        project: ['backend/tsconfig.eslint.json', 'contract-tests/tsconfig.json', 'e2e/tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },

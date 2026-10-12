@@ -6,6 +6,8 @@ yarn.lock
 .yarn
 **/.yarn
 **/coverage
+**/test-results
+**/playwright-report
 
 # Local-only / non-code content
 .atl

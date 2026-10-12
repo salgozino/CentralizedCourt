@@ -73,7 +73,8 @@ be able to resume from here.
 - Juror reads backend merged in `01bbe09` (sections below).
 - Draw UI aligned with the backend juror DTO `{jurorId, name, drawnAt, deadline}` (`d8a5b12` red, green right
   after): fixtures use the backend shape, and the panel test asserts names, no emails and no React key warnings.
-  Browser check against the real backend still pending.
+  Covered end to end by the Playwright suite in `e2e/` (`tests/draw.spec.ts`, part of `make test`); reverting the
+  fix makes it fail with the juror name missing.
 - Day 4 parallel-workstream log: `odd/tasks/multitask-workstreams.md` (local, git-ignored).
 
 ## User names prerequisite
