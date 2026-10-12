@@ -80,8 +80,8 @@ function DrawnJurorsList({ jurors }: Readonly<{ jurors: DrawnJuror[] }>) {
       <h2 className="mb-4 text-lg font-semibold">Drawn jurors</h2>
       <ol aria-label="Drawn jurors" className="list-decimal space-y-2 pl-6">
         {jurors.map((juror) => (
-          <li key={juror.userId} className="break-words">
-            {juror.email}
+          <li key={juror.jurorId} className="break-words">
+            {juror.name}
             <span className="text-klerosUIComponentsSecondaryText">
               {' '}
               · Vote by {new Date(juror.deadline).toLocaleString()}

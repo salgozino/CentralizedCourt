@@ -22,7 +22,8 @@ export type Case = NewCase & {
   updatedAt: string;
 };
 
-export type DrawnJuror = { userId: number; email: string; drawnAt: string; deadline: string };
+/** A seated juror as the backend returns it: `jurorId` is the user's id; no email is exposed. */
+export type DrawnJuror = { jurorId: number; name: string; drawnAt: string; deadline: string };
 
 /** Body of `POST /api/cases/:id/draw` (200): the case, now `voting`, and the drawn panel in order. */
 export type DrawResult = { case: Case; jurors: DrawnJuror[] };
