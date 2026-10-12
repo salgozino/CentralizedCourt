@@ -1,6 +1,28 @@
-import type { Case, DrawResult } from '../api';
+import type { CaseDetail, DrawResult, DrawnJuror } from '../api';
 
-export const votingCase: Case = {
+/** The seated panel in draw order, as the backend returns it: `jurorId` and `name`, never an email. */
+export const drawnJurors: DrawnJuror[] = [
+  {
+    jurorId: 5,
+    name: 'Juror 1',
+    drawnAt: '2026-10-08T10:00:00.000Z',
+    deadline: '2026-10-09T10:00:00.000Z',
+  },
+  {
+    jurorId: 8,
+    name: 'Juror 4',
+    drawnAt: '2026-10-08T10:00:00.000Z',
+    deadline: '2026-10-09T10:00:00.000Z',
+  },
+  {
+    jurorId: 6,
+    name: 'Juror 2',
+    drawnAt: '2026-10-08T10:00:00.000Z',
+    deadline: '2026-10-09T10:00:00.000Z',
+  },
+];
+
+export const votingCase: CaseDetail = {
   id: 7,
   creatorId: 2,
   title: 'Late delivery dispute',
@@ -13,29 +35,8 @@ export const votingCase: Case = {
   result: null,
   createdAt: '2026-10-01T12:00:00.000Z',
   updatedAt: '2026-10-08T10:00:00.000Z',
+  jurors: drawnJurors,
 };
 
-/** Same shape as the backend `DrawOut`: jurors carry `jurorId` and `name`, never an email. */
-export const drawResult: DrawResult = {
-  case: votingCase,
-  jurors: [
-    {
-      jurorId: 5,
-      name: 'Juror 1',
-      drawnAt: '2026-10-08T10:00:00.000Z',
-      deadline: '2026-10-09T10:00:00.000Z',
-    },
-    {
-      jurorId: 8,
-      name: 'Juror 4',
-      drawnAt: '2026-10-08T10:00:00.000Z',
-      deadline: '2026-10-09T10:00:00.000Z',
-    },
-    {
-      jurorId: 6,
-      name: 'Juror 2',
-      drawnAt: '2026-10-08T10:00:00.000Z',
-      deadline: '2026-10-09T10:00:00.000Z',
-    },
-  ],
-};
+/** Same shape as the backend `DrawOut`: the case (now `voting`, with its panel) and the panel again. */
+export const drawResult: DrawResult = { case: votingCase, jurors: drawnJurors };

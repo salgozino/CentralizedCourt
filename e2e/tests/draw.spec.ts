@@ -29,10 +29,16 @@ test('a creator draws a random jury and sees the jurors by name with their deadl
     await expect(juror).toHaveText(/^Juror [1-5] · Vote by .+\d/);
     await expect(juror).not.toHaveText(/@|undefined|Invalid Date/);
   }
-  const names = await jurors.evaluateAll((items) => items.map((li) => li.textContent?.split(' · ')[0]));
-  expect(new Set(names).size).toBe(3);
+  const drawn = await jurors.allTextContents();
+  expect(new Set(drawn.map((text) => text.split(' · ')[0])).size).toBe(3);
 
   await expect(page.getByText('Voting').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Draw jurors' })).toHaveCount(0);
+
+  // The panel is persisted: a fresh load of the detail shows the same jurors, order and deadlines.
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
+  await expect(jurors).toHaveText(drawn);
   await expect(page.getByRole('button', { name: 'Draw jurors' })).toHaveCount(0);
   expect(consoleErrors).toEqual([]);
 });

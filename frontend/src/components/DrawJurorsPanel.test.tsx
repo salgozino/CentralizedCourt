@@ -9,10 +9,10 @@ vi.mock('../api', async (orig) => ({
   getCase: vi.fn(),
   drawJurors: vi.fn(),
 }));
-import { ApiError, drawJurors, getCase, type Case, type DrawResult } from '../api';
+import { ApiError, drawJurors, getCase, type CaseDetail, type DrawResult } from '../api';
 import { drawResult, votingCase } from '../cases/draw.fixtures';
 
-const awaiting: Case = { ...votingCase, status: 'awaiting_jurors' };
+const awaiting: CaseDetail = { ...votingCase, status: 'awaiting_jurors', jurors: [] };
 
 beforeEach(() => {
   vi.mocked(getCase).mockReset().mockResolvedValue(awaiting);
@@ -121,4 +121,21 @@ test('cases that are already voting show no draw button', async () => {
   await setup();
   expect(screen.queryByRole('button', { name: 'Draw jurors' })).not.toBeInTheDocument();
   expect(screen.queryByText('Manual juror assignment is not available yet.')).not.toBeInTheDocument();
+});
+
+test('a loaded voting case shows its persisted panel in draw order with each deadline', async () => {
+  vi.mocked(getCase).mockResolvedValue(votingCase);
+  await setup();
+  const items = within(screen.getByRole('list', { name: 'Drawn jurors' })).getAllByRole('listitem');
+  expect(items).toHaveLength(votingCase.jurors.length);
+  votingCase.jurors.forEach((juror, i) => {
+    expect(items[i]).toHaveTextContent(juror.name);
+    expect(items[i]).toHaveTextContent(new Date(juror.deadline).toLocaleString());
+  });
+  expect(drawJurors).not.toHaveBeenCalled();
+});
+
+test('a case awaiting jurors shows no drawn jurors list', async () => {
+  await setup();
+  expect(screen.queryByRole('list', { name: 'Drawn jurors' })).not.toBeInTheDocument();
 });
