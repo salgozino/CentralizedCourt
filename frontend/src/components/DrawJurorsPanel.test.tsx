@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import CaseDetailPage from './CaseDetailPage';
+import DrawJurorsPanel from './DrawJurorsPanel';
 
 vi.mock('../api', async (orig) => ({
   ...(await orig<typeof import('../api')>()),
@@ -132,3 +133,21 @@ test('a case awaiting jurors shows no drawn jurors list', async () => {
   await setup();
   expect(screen.queryByRole('list', { name: 'Drawn jurors' })).not.toBeInTheDocument();
 });
+
+test.each([{ assignmentHistory: undefined }, { assignmentHistory: [] }])(
+  'renders refusal jurors safely when history is missing or empty ($assignmentHistory)',
+  ({ assignmentHistory }) => {
+    render(
+      <DrawJurorsPanel
+        value={{ ...votingCase, status: 'refusal', assignmentHistory }}
+        canDraw={false}
+        onDrawn={vi.fn()}
+        onUnauthorized={vi.fn()}
+      />,
+    );
+    const list = screen.getByRole('list', { name: 'Drawn jurors' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(votingCase.jurors.length);
+    expect(within(list).getAllByText(/Refusal deadline unavailable/)).toHaveLength(votingCase.jurors.length);
+    expect(list).not.toHaveTextContent(/Invalid Date|Vote by/);
+  },
+);

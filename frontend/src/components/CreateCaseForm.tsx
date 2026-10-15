@@ -40,6 +40,7 @@ export default function CreateCaseForm({ onCreated, onCancel, onUnauthorized }: 
   const [description, setDescription] = useState(initial.description);
   const [outcomes, setOutcomes] = useState<OutcomeRow[]>(initial.outcomes.map((value, key) => ({ key, value })));
   const [voteWindow, setVoteWindow] = useState(initial.window);
+  const [refusalWindow, setRefusalWindow] = useState(initial.refusalWindow);
   const [panelSize, setPanelSize] = useState(initial.panelSize);
   const [selectionMethod, setSelectionMethod] = useState<SelectionMethod>(initial.selectionMethod);
   // Errors only show after the first submit attempt; then they follow every edit.
@@ -52,6 +53,7 @@ export default function CreateCaseForm({ onCreated, onCancel, onUnauthorized }: 
     description,
     outcomes: outcomes.map((o) => o.value),
     window: voteWindow,
+    refusalWindow,
     panelSize,
     selectionMethod,
   };
@@ -185,10 +187,33 @@ export default function CreateCaseForm({ onCreated, onCancel, onUnauthorized }: 
           </p>
         )}
         <p id="window-help" className="text-sm text-klerosUIComponentsSecondaryText">
-          Each juror has this long to vote, starting when they are drawn.
+          {selectionMethod === 'manual'
+            ? 'The panel gets this long to vote after all refusal windows close and every seat is filled.'
+            : 'Each juror has this long to vote, starting when they are drawn.'}
         </p>
       </fieldset>
 
+      {selectionMethod === 'manual' && (
+        <fieldset className="flex flex-col gap-2">
+          <legend>Refusal window</legend>
+          <div className="flex flex-wrap gap-4">
+            {WINDOW_PARTS.map(({ key, label }) => (
+              <TextField
+                key={key}
+                label={`Refusal ${label.toLowerCase()}`}
+                aria-label={`Refusal ${label.toLowerCase()}`}
+                className="w-28"
+                value={refusalWindow[key]}
+                inputProps={{ inputMode: 'numeric' }}
+                isInvalid={!!errors.refusalWindow}
+                onChange={edit((value: string) => setRefusalWindow((w) => ({ ...w, [key]: value })))}
+              />
+            ))}
+          </div>
+          {errors.refusalWindow && <p role="alert">{errors.refusalWindow}</p>}
+          <p>Between 1 minute and 30 days. Starts separately for each drawn juror. Silence means continuing.</p>
+        </fieldset>
+      )}
       <div className="flex flex-wrap gap-8">
         <div className="flex flex-col gap-1">
           <DropdownSelect

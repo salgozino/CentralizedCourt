@@ -57,7 +57,7 @@ describe('jury draw contract', () => {
 
   it('lists eligible jurors (id and name, no email) only to whoever can draw', async () => {
     const owner = await new Client().login('creator1@example.com');
-    const created = await owner.post('/api/cases', { ...payload, selectionMethod: 'manual' });
+    const created = await owner.post('/api/cases', { ...payload, refusalWindowSeconds: 60, selectionMethod: 'manual' });
     const path = `/api/cases/${created.body.id}/eligible-jurors`;
     const listed = await owner.get(path);
     expect(listed.status).toBe(200);
@@ -77,7 +77,7 @@ describe('jury draw contract', () => {
   it('manual assignment only accepts users with the juror role', async () => {
     const ids = await userIds();
     const owner = await new Client().login('creator1@example.com');
-    const manual = { ...payload, selectionMethod: 'manual' };
+    const manual = { ...payload, refusalWindowSeconds: 60, selectionMethod: 'manual' };
     const rejected = await owner.post('/api/cases', manual);
     const bad = await owner.post(`/api/cases/${rejected.body.id}/draw`, {
       jurorIds: [ids['juror1@example.com'], ids['juror2@example.com'], ids['user@example.com']],

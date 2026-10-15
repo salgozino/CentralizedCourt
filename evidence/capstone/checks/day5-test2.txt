@@ -1,0 +1,16 @@
+cd backend && yarn test
+FAIL test/cases.spec.ts
+  ● Test suite failed to run
+
+    [96mtest/cases.spec.ts[0m:[93m50[0m:[93m7[0m - [91merror[0m[90m TS1117: [0mAn object literal cannot have multiple properties with the same name.
+
+    [7m50[0m       refusalWindowSeconds: 60, selectionMethod: 'manual',
+    [7m  [0m [91m      ~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Test Suites: 1 failed, 17 passed, 18 total
+Tests:       205 passed, 205 total
+Snapshots:   0 total
+Time:        21.579 s
+Ran all test suites.
+make: *** [Makefile:23: test] Error 1

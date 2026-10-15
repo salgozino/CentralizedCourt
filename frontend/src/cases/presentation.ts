@@ -2,6 +2,7 @@ import { ApiError, type CaseStatus, type ValidationIssue } from '../api';
 
 export const STATUS_LABELS: Record<CaseStatus, string> = {
   awaiting_jurors: 'Awaiting jurors',
+  refusal: 'Refusal period',
   voting: 'Voting',
   resolved: 'Resolved',
 };

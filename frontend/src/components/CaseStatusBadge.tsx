@@ -3,6 +3,7 @@ import type { CaseStatus } from '../api';
 import { STATUS_LABELS } from '../cases/presentation';
 const styles: Record<CaseStatus, string> = {
   awaiting_jurors: 'border-klerosUIComponentsWarning bg-klerosUIComponentsWarningLight',
+  refusal: 'border-klerosUIComponentsWarning bg-klerosUIComponentsWarningLight',
   voting: 'border-klerosUIComponentsPrimaryBlue bg-klerosUIComponentsMediumBlue',
   resolved: 'border-klerosUIComponentsSuccess bg-klerosUIComponentsSuccessLight',
 };

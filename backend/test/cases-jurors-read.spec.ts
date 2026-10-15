@@ -27,6 +27,7 @@ describe('assigned case reads over HTTP', () => {
       description: 'Details',
       outcomes: ['A', 'B'],
       voteWindowSeconds: 120,
+      refusalWindowSeconds: 60,
       selectionMethod: 'manual',
     };
     caseId = (await owner.post('/api/cases', payload)).body.id;
@@ -101,6 +102,7 @@ describe('assigned case reads over HTTP', () => {
       outcomes: ['A', 'B'],
       voteWindowSeconds: 120,
       panelSize: 1,
+      refusalWindowSeconds: 60,
       selectionMethod: 'manual',
     });
     expect(created.status).toBe(201);

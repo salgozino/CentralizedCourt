@@ -1,0 +1,1804 @@
+diff --git a/NEXT_STEPS.md b/NEXT_STEPS.md
+index b0488bb..f4228ec 100644
+--- a/NEXT_STEPS.md
++++ b/NEXT_STEPS.md
+@@ -3,6 +3,25 @@
+ Update at the end of each session. Keep it short: someone (or a fresh agent) should
+ be able to resume from here.
+ 
++## Day 5: manual juror refusal
++
++- Implemented on `feat/capstone-day5`; specification: `evidence/capstone/day5-specs.md`.
++- New manual requests require `refusalWindowSeconds` (60 seconds–30 days); random requests reject it.
++  The form defaults to 24 hours and offers days/hours/minutes separately from voting duration.
++- Apply the additive `AddRefusal` migration with `make migrate` before starting an existing development DB.
++  No reset or reseed is needed. Existing cases keep a null duration and their original lifecycle/deadlines.
++- New manual draws enter `refusal`. `POST /api/cases/:id/refuse` with `{}` permanently vacates the caller's
++  current seat before its individual cutoff. The UI confirms access loss and permanent exclusion first.
++- Creator/admin `POST /api/cases/:id/replace` takes `{position, jurorId}` (zero-based seat position).
++  It fills one vacancy with a fresh refusal window; the candidate list excludes everyone ever drawn for the case.
++- Case details include `assignmentHistory` for the new lifecycle: assignment ID, seat, juror, selecting actor,
++  draw/refusal timestamps and predecessor ID. Refused rows remain stored and grant no juror permissions.
++- Only current seats count for access, voting, resolution and active-case role-removal restrictions.
++  Independent creator/admin permissions remain after refusal.
++- Reads and votes lazily advance a complete panel at its latest refusal deadline, with one shared full voting
++  window calculated from that logical start. Vacancies wait indefinitely. The UI offers Refresh case.
++- Verification and live permission matrix: `evidence/capstone/day5-verification.md`.
++
+ ## Current state
+ 
+ - Project brief, acceptance list and logs created.
+diff --git a/RUN_LOG.md b/RUN_LOG.md
+index 3f70427..dccd50a 100644
+--- a/RUN_LOG.md
++++ b/RUN_LOG.md
+@@ -63,6 +63,26 @@ Quota: copy the usage/cost shown by the harness when the task ends.
+   - New code requests do not invalidate older unexpired codes.
+   - CSRF kept on for logged-in unsafe calls; SPA reads `csrftoken` cookie.
+ 
++### T5 — Day 5 capstone: held-back feature
++- Date:
++- Branch: `feat/capstone-day5` (worktree `../CentralizedCourt-capstone`)
++- Starting commit: `4457a20` (master, after PR #3)
++- Evidence: `evidence/capstone/` (narrative in `REPORT.md`)
++- Acceptance criteria: (`REPORT.md` sections 1–2)
++- Model / harness / effort (implementer):
++- Reviewer (provider / model / session): `REPORT.md` section 3
++- Prompt / skills / workers:
++- Start – end: (elapsed: )
++- Intervention time: (clarifying, reviewing, inspecting, fixing)
++- Quota consumed: implementer · reviewer (`REPORT.md` section 8)
++- Checks executed: `evidence/capstone/checks/`
++- Reviewer verdict: pass 1 · pass 2
++- Rework:
++- Contamination: (summary of `REPORT.md` section 7)
++- Result: accepted / rejected / narrowed — end commit:
++- Unfinished slice:
++- Notes (decisions that needed my judgment):
++
+ <!-- Copy this template for each task
+ 
+ ### T? — <slice name>
+diff --git a/backend/src/cases/cases.controller.ts b/backend/src/cases/cases.controller.ts
+index b03e181..7b0ac6c 100644
+--- a/backend/src/cases/cases.controller.ts
++++ b/backend/src/cases/cases.controller.ts
+@@ -11,7 +11,7 @@ import {
+   UseGuards,
+ } from '@nestjs/common';
+ import { InjectRepository } from '@nestjs/typeorm';
+-import { Repository } from 'typeorm';
++import { IsNull, Repository } from 'typeorm';
+ 
+ import { CsrfGuard } from '../auth/csrf.guard';
+ import { AuthenticatedRequest, SessionAuthGuard } from '../auth/session-auth.guard';
+@@ -21,6 +21,9 @@ import { ZodBodyPipe } from '../http/validation';
+ 
+ import { CreatorGuard } from './creator.guard';
+ import {
++  RefuseIn,
++  ReplaceIn,
++  toAssignmentOut,
+   CaseDetailOut,
+   CaseOut,
+   CreateCaseIn,
+@@ -49,7 +52,7 @@ export class CasesController {
+   async list(@Req() req: AuthenticatedRequest): Promise<CaseOut[]> {
+     const query = () => this.visibleCases(req.user).orderBy('c.createdAt', 'DESC').addOrderBy('c.id', 'DESC').getMany();
+     let rows = await query();
+-    const due = rows.filter((c) => c.status === 'voting').map((c) => c.id);
++    const due = rows.filter((c) => c.status === 'voting' || c.status === 'refusal').map((c) => c.id);
+     if (due.length) {
+       await this.voting.settle(due);
+       rows = await query();
+@@ -61,7 +64,7 @@ export class CasesController {
+   @Get(':id')
+   async detail(@Req() req: AuthenticatedRequest, @Param('id') rawId: string): Promise<CaseDetailOut> {
+     const row = await this.visibleCase(req.user, rawId);
+-    if (row.status === 'voting') await this.voting.settle([row.id]);
++    if (row.status === 'voting' || row.status === 'refusal') await this.voting.settle([row.id]);
+     return this.detailFor(req.user, row.id);
+   }
+ 
+@@ -77,7 +80,7 @@ export class CasesController {
+     @Body() body: unknown,
+   ): Promise<CaseDetailOut> {
+     const row = await this.visibleCase(req.user, rawId);
+-    if (!(await this.jurors.existsBy({ caseId: row.id, userId: req.user.id }))) {
++    if (!(await this.jurors.existsBy({ caseId: row.id, userId: req.user.id, refusedAt: IsNull() }))) {
+       throw new ForbiddenException('Only drawn jurors can vote');
+     }
+     const { outcomeIndex } = new ZodBodyPipe(VoteIn).transform(body ?? {});
+@@ -101,11 +104,17 @@ export class CasesController {
+     const row = await this.cases.findOneByOrFail({ id: caseId });
+     const panel = await this.jurors.find({
+       where: { caseId },
+-      relations: { user: true },
++      relations: { user: true, selectedBy: true },
+       order: { position: 'ASC' },
+     });
+     const resolved = row.status === 'resolved';
+-    return { ...toCaseOut(row), jurors: panel.map((j) => toJurorOut(j, resolved || j.userId === viewer.id)) };
++    return {
++      ...toCaseOut(row),
++      jurors: panel.filter((j) => j.refusedAt === null).map((j) => toJurorOut(j, resolved || j.userId === viewer.id)),
++      ...(row.refusalWindowSeconds !== null
++        ? { assignmentHistory: panel.sort((a, b) => a.id - b.id).map(toAssignmentOut) }
++        : {}),
++    };
+   }
+ 
+   /** Assignment, not the current role flag, grants access. EXISTS avoids duplicate owned/assigned rows. */
+@@ -116,7 +125,7 @@ export class CasesController {
+         .subQuery()
+         .select('1')
+         .from(CaseJuror, 'j')
+-        .where('j.caseId = c.id AND j.userId = :userId')
++        .where('j.caseId = c.id AND j.userId = :userId AND j.refusedAt IS NULL')
+         .getQuery();
+       query.where(`(c.creatorId = :userId OR EXISTS ${assigned})`, { userId: user.id });
+     }
+@@ -138,8 +147,11 @@ export class CasesController {
+   /** The pool a manual panel is picked from. Same permission as the draw itself; reads need no CSRF. */
+   @Get(':id/eligible-jurors')
+   async eligibleJurors(@Req() req: AuthenticatedRequest, @Param('id') rawId: string): Promise<EligibleJurorOut[]> {
+-    await this.drawableCase(req.user, rawId);
+-    return (await this.jury.eligible()).map((u) => ({ jurorId: u.id, name: u.name }));
++    const row = await this.drawableCase(req.user, rawId);
++    const history = row.refusalWindowSeconds === null ? [] : await this.jurors.findBy({ caseId: row.id });
++    return (await this.jury.eligible())
++      .filter((u) => !history.some((j) => j.userId === u.id))
++      .map((u) => ({ jurorId: u.id, name: u.name }));
+   }
+ 
+   /**
+@@ -155,16 +167,45 @@ export class CasesController {
+     return row;
+   }
+ 
++  @Post(':id/refuse')
++  @HttpCode(200)
++  async refuse(
++    @Req() req: AuthenticatedRequest,
++    @Param('id') rawId: string,
++    @Body() body: unknown,
++  ): Promise<{ refused: true }> {
++    const row = await this.visibleCase(req.user, rawId);
++    if (!(await this.jurors.existsBy({ caseId: row.id, userId: req.user.id, refusedAt: IsNull() }))) {
++      throw new ForbiddenException('Only current jurors can refuse');
++    }
++    new ZodBodyPipe(RefuseIn).transform(body ?? {});
++    await this.jury.refuse(row.id, req.user.id);
++    return { refused: true };
++  }
++
++  @Post(':id/replace')
++  @HttpCode(200)
++  async replace(
++    @Req() req: AuthenticatedRequest,
++    @Param('id') rawId: string,
++    @Body() body: unknown,
++  ): Promise<CaseDetailOut> {
++    const row = await this.drawableCase(req.user, rawId);
++    const { position, jurorId } = new ZodBodyPipe(ReplaceIn).transform(body ?? {});
++    await this.jury.replace(row.id, position, jurorId, req.user.id);
++    return this.detailFor(req.user, row.id);
++  }
++
+   @Post(':id/draw')
+   @HttpCode(200)
+   async draw(@Req() req: AuthenticatedRequest, @Param('id') rawId: string, @Body() body: unknown): Promise<DrawOut> {
+     const row = await this.drawableCase(req.user, rawId);
+     // A bodiless POST leaves req.body undefined; for a random draw that is the normal call.
+     const { jurorIds } = new ZodBodyPipe(DrawIn).transform(body ?? {});
+-    const seated = await this.jury.seat(row.id, jurorIds);
++    const seated = await this.jury.seat(row.id, jurorIds, req.user.id);
+     // Nobody has voted yet on a freshly seated panel.
+     const jurors = seated.jurors.map((j) => toJurorOut(j, false));
+-    return { case: { ...toCaseOut(seated.case), jurors }, jurors };
++    return { case: await this.detailFor(req.user, row.id), jurors };
+   }
+ }
+ 
+diff --git a/backend/src/cases/dto.ts b/backend/src/cases/dto.ts
+index 027f877..066045c 100644
+--- a/backend/src/cases/dto.ts
++++ b/backend/src/cases/dto.ts
+@@ -9,24 +9,35 @@ export const MAX_PANEL_SIZE = 11;
+ const isUniqueIgnoringCase = (labels: string[]) => new Set(labels.map((l) => l.toLowerCase())).size === labels.length;
+ 
+ /** Unknown fields are rejected (422), so a client cannot slip in status, result or evidence. */
+-export const CreateCaseIn = z.strictObject({
+-  title: z.string().trim().min(3).max(200),
+-  description: z.string().trim().min(1).max(5000),
+-  outcomes: z
+-    .array(z.string().trim().min(1).max(100))
+-    .min(2)
+-    .max(10)
+-    .refine(isUniqueIgnoringCase, 'Outcomes must be unique (case-insensitive)'),
+-  voteWindowSeconds: z.number().int().min(MIN_VOTE_WINDOW_SECONDS).max(MAX_VOTE_WINDOW_SECONDS),
+-  panelSize: z
+-    .number()
+-    .int()
+-    .min(1)
+-    .max(MAX_PANEL_SIZE)
+-    .refine((n) => n % 2 === 1, 'Panel size must be odd')
+-    .default(3),
+-  selectionMethod: z.enum(SELECTION_METHODS).default('random'),
+-});
++export const CreateCaseIn = z
++  .strictObject({
++    refusalWindowSeconds: z.number().int().min(60).max(MAX_VOTE_WINDOW_SECONDS).optional(),
++    title: z.string().trim().min(3).max(200),
++    description: z.string().trim().min(1).max(5000),
++    outcomes: z
++      .array(z.string().trim().min(1).max(100))
++      .min(2)
++      .max(10)
++      .refine(isUniqueIgnoringCase, 'Outcomes must be unique (case-insensitive)'),
++    voteWindowSeconds: z.number().int().min(MIN_VOTE_WINDOW_SECONDS).max(MAX_VOTE_WINDOW_SECONDS),
++    panelSize: z
++      .number()
++      .int()
++      .min(1)
++      .max(MAX_PANEL_SIZE)
++      .refine((n) => n % 2 === 1, 'Panel size must be odd')
++      .default(3),
++    selectionMethod: z.enum(SELECTION_METHODS).default('random'),
++  })
++  .superRefine((value, ctx) => {
++    if ((value.selectionMethod === 'manual') !== (value.refusalWindowSeconds !== undefined)) {
++      ctx.addIssue({
++        code: 'custom',
++        path: ['refusalWindowSeconds'],
++        message: 'Refusal duration is required only for manual selection',
++      });
++    }
++  });
+ export type CreateCaseIn = z.infer<typeof CreateCaseIn>;
+ 
+ /** Empty for random cases; manual cases list exactly panelSize distinct user ids, in panel order. */
+@@ -52,6 +63,7 @@ export interface CaseOut {
+   description: string;
+   outcomes: string[];
+   voteWindowSeconds: number;
++  refusalWindowSeconds: number | null;
+   panelSize: number;
+   selectionMethod: SelectionMethod;
+   status: CaseStatus;
+@@ -67,6 +79,7 @@ export const toCaseOut = (c: Case): CaseOut => ({
+   description: c.description,
+   outcomes: c.outcomes,
+   voteWindowSeconds: c.voteWindowSeconds,
++  refusalWindowSeconds: c.refusalWindowSeconds,
+   panelSize: c.panelSize,
+   selectionMethod: c.selectionMethod,
+   status: c.status,
+@@ -77,6 +90,7 @@ export const toCaseOut = (c: Case): CaseOut => ({
+ 
+ export interface CaseDetailOut extends CaseOut {
+   jurors: JurorOut[];
++  assignmentHistory?: AssignmentOut[];
+ }
+ 
+ export interface JurorOut {
+@@ -108,4 +122,39 @@ export interface EligibleJurorOut {
+ export interface DrawOut {
+   case: CaseDetailOut;
+   jurors: JurorOut[];
++  assignmentHistory?: AssignmentOut[];
+ }
++
++export const ReplaceIn = z.strictObject({
++  position: z
++    .number()
++    .int()
++    .min(0)
++    .max(MAX_PANEL_SIZE - 1),
++  jurorId: z.number().int().positive(),
++});
++export const RefuseIn = z.strictObject({});
++export interface AssignmentOut {
++  id: number;
++  position: number;
++  jurorId: number;
++  name: string;
++  selectedById: number | null;
++  selectedByName: string | null;
++  predecessorId: number | null;
++  drawnAt: Date;
++  refusalDeadline: Date | null;
++  refusedAt: Date | null;
++}
++export const toAssignmentOut = (j: CaseJuror): AssignmentOut => ({
++  id: j.id,
++  position: j.position,
++  jurorId: j.userId,
++  name: j.user.name,
++  selectedById: j.selectedById,
++  selectedByName: j.selectedBy?.name ?? null,
++  predecessorId: j.predecessorId,
++  drawnAt: j.drawnAt,
++  refusalDeadline: j.refusalDeadline,
++  refusedAt: j.refusedAt,
++});
+diff --git a/backend/src/cases/jury.service.ts b/backend/src/cases/jury.service.ts
+index c2867d1..b3a7859 100644
+--- a/backend/src/cases/jury.service.ts
++++ b/backend/src/cases/jury.service.ts
+@@ -1,7 +1,7 @@
+ import { randomInt } from 'node:crypto';
+ 
+ import { ConflictException, Inject, Injectable } from '@nestjs/common';
+-import { DataSource, EntityManager } from 'typeorm';
++import { DataSource, EntityManager, IsNull } from 'typeorm';
+ 
+ import { Case, CaseJuror, User } from '../entities';
+ import { UnprocessableException } from '../http/errors';
+@@ -27,15 +27,19 @@ export class JuryService {
+     @Inject(CLOCK) private readonly clock: Clock,
+   ) {}
+ 
+-  /** Seats the panel and moves the case to voting; `jurorIds` is only given for manual cases. */
+-  async seat(caseId: number, jurorIds?: number[]): Promise<{ case: Case; jurors: CaseJuror[] }> {
++  /** Seats the panel and enters refusal for new manual cases, otherwise voting. */
++  async seat(caseId: number, jurorIds?: number[], selectedById?: number): Promise<{ case: Case; jurors: CaseJuror[] }> {
+     return this.dataSource.transaction(async (manager) => {
+       const row = await manager.findOneByOrFail(Case, { id: caseId });
+       if (row.status !== 'awaiting_jurors') throw new ConflictException(NOT_AWAITING);
+       const panel = await this.select(manager, row, jurorIds);
+ 
+       // Conditional update so two concurrent draws cannot both seat a panel.
+-      const moved = await manager.update(Case, { id: caseId, status: 'awaiting_jurors' }, { status: 'voting' });
++      const moved = await manager.update(
++        Case,
++        { id: caseId, status: 'awaiting_jurors' },
++        { status: row.refusalWindowSeconds === null ? 'voting' : 'refusal' },
++      );
+       if (!moved.affected) throw new ConflictException(NOT_AWAITING);
+ 
+       const drawnAt = this.clock();
+@@ -44,6 +48,11 @@ export class JuryService {
+         panel.map((user, position) =>
+           manager.create(CaseJuror, {
+             caseId,
++            selectedById: selectedById ?? null,
++            predecessorId: null,
++            refusedAt: null,
++            refusalDeadline:
++              row.refusalWindowSeconds === null ? null : new Date(drawnAt.getTime() + row.refusalWindowSeconds * 1000),
+             userId: user.id,
+             user,
+             position,
+@@ -58,6 +67,52 @@ export class JuryService {
+     });
+   }
+ 
++  async refuse(caseId: number, userId: number): Promise<void> {
++    await this.dataSource.transaction(async (manager) => {
++      const row = await manager.findOneByOrFail(Case, { id: caseId });
++      const seat = await manager.findOneBy(CaseJuror, { caseId, userId, refusedAt: IsNull() });
++      const now = this.clock();
++      if (row.status !== 'refusal' || !seat?.refusalDeadline || now >= seat.refusalDeadline) {
++        throw new ConflictException('The refusal window is closed');
++      }
++      const result = await manager.update(CaseJuror, { id: seat.id, refusedAt: IsNull() }, { refusedAt: now });
++      if (!result.affected) throw new ConflictException('The refusal is final');
++    });
++  }
++
++  async replace(caseId: number, position: number, jurorId: number, selectedById: number): Promise<void> {
++    await this.dataSource.transaction(async (manager) => {
++      const row = await manager.findOneByOrFail(Case, { id: caseId });
++      if (row.status !== 'refusal' || position >= row.panelSize)
++        throw new ConflictException('No vacant seat at this position');
++      const history = await manager.find(CaseJuror, { where: { caseId }, order: { id: 'DESC' } });
++      if (history.some((j) => j.position === position && j.refusedAt === null))
++        throw new ConflictException('This seat is occupied');
++      const predecessor = history.find((j) => j.position === position);
++      if (!predecessor) throw new ConflictException('No vacant seat at this position');
++      if (history.some((j) => j.userId === jurorId))
++        throw new UnprocessableException('Previously drawn jurors cannot be selected again');
++      const [user] = await this.assigned(manager, [jurorId]);
++      const drawnAt = this.clock();
++      await manager.save(
++        CaseJuror,
++        manager.create(CaseJuror, {
++          caseId,
++          position,
++          userId: user.id,
++          selectedById,
++          predecessorId: predecessor.id,
++          drawnAt,
++          refusalDeadline: new Date(drawnAt.getTime() + row.refusalWindowSeconds! * 1000),
++          refusedAt: null,
++          deadline: new Date(drawnAt.getTime() + row.voteWindowSeconds * 1000),
++          outcomeIndex: null,
++          votedAt: null,
++        }),
++      );
++    });
++  }
++
+   private async select(manager: EntityManager, row: Case, jurorIds?: number[]): Promise<User[]> {
+     if (row.selectionMethod === 'random') {
+       if (jurorIds !== undefined) throw new UnprocessableException('jurorIds are only accepted for manual selection');
+diff --git a/backend/src/cases/voting.service.ts b/backend/src/cases/voting.service.ts
+index 0e9a76a..0f6255a 100644
+--- a/backend/src/cases/voting.service.ts
++++ b/backend/src/cases/voting.service.ts
+@@ -48,21 +48,25 @@ export class VotingService {
+    */
+   async isOnActiveCase(userId: number): Promise<boolean> {
+     const openSeats = () =>
+-      this.dataSource
+-        .getRepository(CaseJuror)
+-        .find({ where: { userId, case: { status: 'voting' } }, relations: { case: true } });
++      this.dataSource.getRepository(CaseJuror).find({
++        where: [
++          { userId, refusedAt: IsNull(), case: { status: 'voting' } },
++          { userId, refusedAt: IsNull(), case: { status: 'refusal' } },
++        ],
++        relations: { case: true },
++      });
+     const seats = await openSeats();
+     if (!seats.length) return false;
+     await this.settle(seats.map((s) => s.caseId));
+     return (await openSeats()).length > 0;
+   }
+ 
+-  /** Settles the given cases that are due; cases not in `voting` are left untouched. */
++  /** Advances refusal at its logical cutoff, then resolves voting cases that are due. */
+   async settle(caseIds: number[]): Promise<void> {
+     if (!caseIds.length) return;
+     const now = this.clock();
+     await this.dataSource.transaction(async (manager) => {
+-      const rows = await manager.findBy(Case, { id: In(caseIds), status: 'voting' });
++      const rows = await manager.findBy(Case, { id: In(caseIds), status: In(['voting', 'refusal']) });
+       for (const row of rows) await this.settleOne(manager, row, now);
+     });
+   }
+@@ -75,7 +79,9 @@ export class VotingService {
+     const now = this.clock();
+     const rejection = await this.dataSource.transaction(async (manager) => {
+       const row = await manager.findOneByOrFail(Case, { id: caseId });
+-      const seat = await manager.findOneByOrFail(CaseJuror, { caseId, userId });
++      await this.openVoting(manager, row, now);
++      if (row.status === 'refusal') return NOT_VOTING;
++      const seat = await manager.findOneByOrFail(CaseJuror, { caseId, userId, refusedAt: IsNull() });
+       if (isPastDeadline(seat, now)) {
+         if (row.status === 'voting') await this.settleOne(manager, row, now);
+         return DEADLINE_PASSED;
+@@ -94,8 +100,24 @@ export class VotingService {
+     if (rejection) throw new ConflictException(rejection);
+   }
+ 
++  private async openVoting(manager: EntityManager, row: Case, now: Date): Promise<void> {
++    if (row.status !== 'refusal') return;
++    const panel = await manager.findBy(CaseJuror, { caseId: row.id, refusedAt: IsNull() });
++    if (panel.length !== row.panelSize || panel.some((j) => !j.refusalDeadline || j.refusalDeadline > now)) return;
++    const start = Math.max(...panel.map((j) => j.refusalDeadline!.getTime()));
++    await manager.update(
++      CaseJuror,
++      { caseId: row.id, refusedAt: IsNull() },
++      { deadline: new Date(start + row.voteWindowSeconds * 1000) },
++    );
++    await manager.update(Case, { id: row.id, status: 'refusal' }, { status: 'voting' });
++    row.status = 'voting';
++  }
++
+   private async settleOne(manager: EntityManager, row: Case, now: Date): Promise<void> {
+-    const panel = await manager.findBy(CaseJuror, { caseId: row.id });
++    await this.openVoting(manager, row, now);
++    if (row.status !== 'voting') return;
++    const panel = await manager.findBy(CaseJuror, { caseId: row.id, refusedAt: IsNull() });
+     if (!isDue(panel, now)) return;
+     await manager.update(
+       Case,
+diff --git a/backend/src/entities/case-juror.entity.ts b/backend/src/entities/case-juror.entity.ts
+index 404743e..43a7436 100644
+--- a/backend/src/entities/case-juror.entity.ts
++++ b/backend/src/entities/case-juror.entity.ts
+@@ -3,9 +3,11 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn }
+ import { Case } from './case.entity';
+ import { User } from './user.entity';
+ 
+-/** A juror drawn (or manually assigned) to a case; their vote window starts at drawnAt. One final vote each. */
++/** A durable assignment. Refused rows remain history; only rows with refusedAt=null grant a current seat. */
+ @Entity('case_jurors')
+ @Index(['caseId', 'userId'], { unique: true })
++@Index('current_case_seat', ['caseId', 'position'], { unique: true, where: '"refusedAt" IS NULL' })
++@Index('assignment_successor', ['predecessorId'], { unique: true, where: '"predecessorId" IS NOT NULL' })
+ export class CaseJuror {
+   @PrimaryGeneratedColumn()
+   id: number;
+@@ -32,10 +34,30 @@ export class CaseJuror {
+   @Column({ type: 'datetime' })
+   drawnAt: Date;
+ 
+-  /** drawnAt + the case's voteWindowSeconds. */
++  /** Voting deadline; recalculated for the whole current panel when refusal ends. */
+   @Column({ type: 'datetime' })
+   deadline: Date;
+ 
++  @Column({ type: 'integer', nullable: true })
++  selectedById: number | null;
++
++  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
++  @JoinColumn({ name: 'selectedById' })
++  selectedBy: User | null;
++
++  @Column({ type: 'integer', nullable: true })
++  predecessorId: number | null;
++
++  @ManyToOne(() => CaseJuror, { nullable: true, onDelete: 'RESTRICT' })
++  @JoinColumn({ name: 'predecessorId' })
++  predecessor: CaseJuror | null;
++
++  @Column({ type: 'datetime', nullable: true })
++  refusalDeadline: Date | null;
++
++  @Column({ type: 'datetime', nullable: true })
++  refusedAt: Date | null;
++
+   /** Index into the case's outcomes; null until this juror votes. */
+   @Column({ type: 'smallint', nullable: true })
+   outcomeIndex: number | null;
+diff --git a/backend/src/entities/case.entity.ts b/backend/src/entities/case.entity.ts
+index 9ef1674..4ff4174 100644
+--- a/backend/src/entities/case.entity.ts
++++ b/backend/src/entities/case.entity.ts
+@@ -11,7 +11,7 @@ import {
+ 
+ import { User } from './user.entity';
+ 
+-export const CASE_STATUSES = ['awaiting_jurors', 'voting', 'resolved'] as const;
++export const CASE_STATUSES = ['awaiting_jurors', 'refusal', 'voting', 'resolved'] as const;
+ export type CaseStatus = (typeof CASE_STATUSES)[number];
+ 
+ export const SELECTION_METHODS = ['random', 'manual'] as const;
+@@ -46,6 +46,10 @@ export class Case {
+   @Column({ type: 'integer' })
+   voteWindowSeconds: number;
+ 
++  /** Null preserves the lifecycle of cases created before refusal was introduced. */
++  @Column({ type: 'integer', nullable: true })
++  refusalWindowSeconds: number | null;
++
+   /** Number of jurors (one vote each). */
+   @Column({ type: 'smallint', default: 3 })
+   panelSize: number;
+diff --git a/backend/src/migrations/1792000000000-AddRefusal.ts b/backend/src/migrations/1792000000000-AddRefusal.ts
+new file mode 100644
+index 0000000..9ea551e
+--- /dev/null
++++ b/backend/src/migrations/1792000000000-AddRefusal.ts
+@@ -0,0 +1,25 @@
++import { MigrationInterface, QueryRunner } from 'typeorm';
++
++export class AddRefusal1792000000000 implements MigrationInterface {
++  async up(q: QueryRunner): Promise<void> {
++    await q.query(`ALTER TABLE cases ADD COLUMN refusalWindowSeconds integer`);
++    await q.query(`ALTER TABLE case_jurors ADD COLUMN selectedById integer REFERENCES users(id) ON DELETE RESTRICT`);
++    await q.query(
++      `ALTER TABLE case_jurors ADD COLUMN predecessorId integer REFERENCES case_jurors(id) ON DELETE RESTRICT`,
++    );
++    await q.query(`ALTER TABLE case_jurors ADD COLUMN refusalDeadline datetime`);
++    await q.query(`ALTER TABLE case_jurors ADD COLUMN refusedAt datetime`);
++    await q.query(`CREATE UNIQUE INDEX current_case_seat ON case_jurors(caseId, position) WHERE refusedAt IS NULL`);
++    await q.query(
++      `CREATE UNIQUE INDEX assignment_successor ON case_jurors(predecessorId) WHERE predecessorId IS NOT NULL`,
++    );
++  }
++  async down(q: QueryRunner): Promise<void> {
++    await q.query(`DROP INDEX assignment_successor`);
++    await q.query(`DROP INDEX current_case_seat`);
++    for (const column of ['refusedAt', 'refusalDeadline', 'predecessorId', 'selectedById']) {
++      await q.query(`ALTER TABLE case_jurors DROP COLUMN "${column}"`);
++    }
++    await q.query(`ALTER TABLE cases DROP COLUMN refusalWindowSeconds`);
++  }
++}
+diff --git a/backend/src/migrations/index.ts b/backend/src/migrations/index.ts
+index ec51ff0..cc18c76 100644
+--- a/backend/src/migrations/index.ts
++++ b/backend/src/migrations/index.ts
+@@ -3,6 +3,7 @@ import { CreateCases1791407902997 } from './1791407902997-CreateCases';
+ import { CreateCaseJurors1791480908801 } from './1791480908801-CreateCaseJurors';
+ import { AddUserName1791572083979 } from './1791572083979-AddUserName';
+ import { AddJurorVotes1791900000000 } from './1791900000000-AddJurorVotes';
++import { AddRefusal1792000000000 } from './1792000000000-AddRefusal';
+ 
+ // Explicit list (not a glob) so the same code works from src/ under ts-jest and from dist/.
+ export const MIGRATIONS = [
+@@ -11,4 +12,5 @@ export const MIGRATIONS = [
+   CreateCaseJurors1791480908801,
+   AddUserName1791572083979,
+   AddJurorVotes1791900000000,
++  AddRefusal1792000000000,
+ ];
+diff --git a/backend/test/admin-juror-removal.spec.ts b/backend/test/admin-juror-removal.spec.ts
+index ee4d0ab..ae1c84a 100644
+--- a/backend/test/admin-juror-removal.spec.ts
++++ b/backend/test/admin-juror-removal.spec.ts
+@@ -1,4 +1,4 @@
+-import { User } from '../src/entities';
++import { Case, User } from '../src/entities';
+ 
+ import { Browser, BootedApp, bootApp } from './helpers';
+ 
+@@ -28,8 +28,11 @@ describe('removing the juror role', () => {
+       description: 'Details',
+       outcomes: ['A', 'B'],
+       voteWindowSeconds: WINDOW_SECONDS,
++      refusalWindowSeconds: 60,
+       selectionMethod: 'manual',
+     });
++    // Legacy stored manual cases keep immediate voting.
++    await booted.dataSource.getRepository(Case).update(created.body.id, { refusalWindowSeconds: null });
+     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
+     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
+     return created.body.id;
+diff --git a/backend/test/cases-jurors-read.spec.ts b/backend/test/cases-jurors-read.spec.ts
+index 5452e1f..c905251 100644
+--- a/backend/test/cases-jurors-read.spec.ts
++++ b/backend/test/cases-jurors-read.spec.ts
+@@ -27,6 +27,7 @@ describe('assigned case reads over HTTP', () => {
+       description: 'Details',
+       outcomes: ['A', 'B'],
+       voteWindowSeconds: 120,
++      refusalWindowSeconds: 60,
+       selectionMethod: 'manual',
+     };
+     caseId = (await owner.post('/api/cases', payload)).body.id;
+@@ -101,6 +102,7 @@ describe('assigned case reads over HTTP', () => {
+       outcomes: ['A', 'B'],
+       voteWindowSeconds: 120,
+       panelSize: 1,
++      refusalWindowSeconds: 60,
+       selectionMethod: 'manual',
+     });
+     expect(created.status).toBe(201);
+diff --git a/backend/test/cases-read.spec.ts b/backend/test/cases-read.spec.ts
+index 0f57616..6392fa2 100644
+--- a/backend/test/cases-read.spec.ts
++++ b/backend/test/cases-read.spec.ts
+@@ -55,6 +55,7 @@ describe('case visibility over HTTP', () => {
+         'description',
+         'outcomes',
+         'voteWindowSeconds',
++        'refusalWindowSeconds',
+         'panelSize',
+         'selectionMethod',
+         'status',
+diff --git a/backend/test/cases.spec.ts b/backend/test/cases.spec.ts
+index 4d53bbe..9c96bd4 100644
+--- a/backend/test/cases.spec.ts
++++ b/backend/test/cases.spec.ts
+@@ -26,6 +26,7 @@ describe('create case over HTTP', () => {
+       id: expect.any(Number),
+       creatorId: creator.id,
+       ...validCase,
++      refusalWindowSeconds: null,
+       panelSize: 3,
+       selectionMethod: 'random',
+       status: 'awaiting_jurors',
+@@ -45,6 +46,7 @@ describe('create case over HTTP', () => {
+       title: '  Padded title  ',
+       outcomes: [' A ', 'B', 'C'],
+       panelSize: 5,
++      refusalWindowSeconds: 60,
+       selectionMethod: 'manual',
+     });
+     expect(res.status).toBe(201);
+diff --git a/backend/test/draw.spec.ts b/backend/test/draw.spec.ts
+index af7c2fd..9046292 100644
+--- a/backend/test/draw.spec.ts
++++ b/backend/test/draw.spec.ts
+@@ -153,7 +153,7 @@ describe('jury draw over HTTP', () => {
+ 
+   describe('manual assignment', () => {
+     it('assigns exactly the given jurors', async () => {
+-      const id = await createCase(owner, { selectionMethod: 'manual' });
++      const id = await createCase(owner, { refusalWindowSeconds: 60, selectionMethod: 'manual' });
+       const jurorIds = [
+         await idOf('juror4@example.com'),
+         await idOf('juror1@example.com'),
+@@ -161,7 +161,7 @@ describe('jury draw over HTTP', () => {
+       ];
+       const res = await owner.post(`/api/cases/${id}/draw`, { jurorIds });
+       expect(res.status).toBe(200);
+-      expect(res.body.case.status).toBe('voting');
++      expect(res.body.case.status).toBe('refusal');
+       expect(res.body.jurors.map((j: JurorOut) => j.jurorId)).toEqual(jurorIds);
+       for (const juror of res.body.jurors as JurorOut[])
+         expect(new Date(juror.deadline).getTime() - new Date(juror.drawnAt).getTime()).toBe(120 * 1000);
+@@ -171,7 +171,7 @@ describe('jury draw over HTTP', () => {
+       ['a plain user', ['juror1@example.com', 'juror2@example.com', 'user@example.com']],
+       ['a creator', ['juror1@example.com', 'juror2@example.com', 'creator2@example.com']],
+     ])('rejects %s with 422 and keeps the case awaiting jurors', async (_label, emails) => {
+-      const id = await createCase(owner, { selectionMethod: 'manual' });
++      const id = await createCase(owner, { refusalWindowSeconds: 60, selectionMethod: 'manual' });
+       const jurorIds = await Promise.all(emails.map(idOf));
+       const res = await owner.post(`/api/cases/${id}/draw`, { jurorIds });
+       expect(res.status).toBe(422);
+@@ -183,7 +183,7 @@ describe('jury draw over HTTP', () => {
+       const adminUser = await users().findOneByOrFail({ email: 'admin@example.com' });
+       await users().update(adminUser.id, { isJuror: true });
+       try {
+-        const id = await createCase(owner, { selectionMethod: 'manual' });
++        const id = await createCase(owner, { refusalWindowSeconds: 60, selectionMethod: 'manual' });
+         const jurorIds = [await idOf('juror1@example.com'), await idOf('juror2@example.com'), adminUser.id];
+         const res = await owner.post(`/api/cases/${id}/draw`, { jurorIds });
+         expect(res.status).toBe(422);
+@@ -198,7 +198,7 @@ describe('jury draw over HTTP', () => {
+       ['too few', ['juror1@example.com', 'juror2@example.com']],
+       ['duplicated', ['juror1@example.com', 'juror1@example.com', 'juror2@example.com']],
+     ])('rejects %s jurorIds with 422', async (_label, emails) => {
+-      const id = await createCase(owner, { selectionMethod: 'manual' });
++      const id = await createCase(owner, { refusalWindowSeconds: 60, selectionMethod: 'manual' });
+       const body = emails ? { jurorIds: await Promise.all(emails.map(idOf)) } : {};
+       const res = await owner.post(`/api/cases/${id}/draw`, body);
+       expect(res.status).toBe(422);
+diff --git a/backend/test/eligible-jurors.spec.ts b/backend/test/eligible-jurors.spec.ts
+index eebbdc9..105b87c 100644
+--- a/backend/test/eligible-jurors.spec.ts
++++ b/backend/test/eligible-jurors.spec.ts
+@@ -7,6 +7,7 @@ const payload = {
+   description: 'Details',
+   outcomes: ['A', 'B'],
+   voteWindowSeconds: 120,
++  refusalWindowSeconds: 60,
+   selectionMethod: 'manual',
+ };
+ 
+diff --git a/backend/test/migrations.spec.ts b/backend/test/migrations.spec.ts
+index 573d024..7c50f8c 100644
+--- a/backend/test/migrations.spec.ts
++++ b/backend/test/migrations.spec.ts
+@@ -37,6 +37,7 @@ describe('migrations', () => {
+     const columns = await dataSource.query('PRAGMA table_info(case_jurors)');
+     expect(columns).toContainEqual(expect.objectContaining({ name: 'outcomeIndex', notnull: 0, dflt_value: null }));
+     expect(columns).toContainEqual(expect.objectContaining({ name: 'votedAt', notnull: 0, dflt_value: null }));
++    await dataSource.undoLastMigration(); // refusal fields
+     await dataSource.undoLastMigration();
+     const reverted = (await dataSource.query('PRAGMA table_info(case_jurors)')).map((c: { name: string }) => c.name);
+     expect(reverted).toEqual(['id', 'caseId', 'userId', 'position', 'drawnAt', 'deadline']);
+@@ -46,7 +47,8 @@ describe('migrations', () => {
+   it('adds a required name column without a default and round-trips a user name', async () => {
+     const columns = await dataSource.query('PRAGMA table_info(users)');
+     expect(columns).toContainEqual(expect.objectContaining({ name: 'name', notnull: 1, dflt_value: null }));
+-    // Revert and reapply on the empty DB (vote columns first): resetting development data is explicitly permitted.
++    // Revert refusal, votes and names on the empty DB.
++    await dataSource.undoLastMigration();
+     await dataSource.undoLastMigration();
+     await dataSource.undoLastMigration();
+     expect(await dataSource.query('PRAGMA table_info(users)')).not.toContainEqual(
+@@ -145,7 +147,8 @@ describe('migrations', () => {
+     const ds = await migratedDataSource(revertPath);
+     const tableNames = async () =>
+       (await ds.query(`SELECT name FROM sqlite_master WHERE type = 'table'`)).map((t: { name: string }) => t.name);
+-    // First revert the vote columns, then the user-name migration.
++    // First revert refusal, vote columns, then user names.
++    await ds.undoLastMigration();
+     await ds.undoLastMigration();
+     await ds.undoLastMigration();
+     expect(await ds.query('PRAGMA table_info(users)')).not.toContainEqual(expect.objectContaining({ name: 'name' }));
+diff --git a/backend/test/refusal-migration.spec.ts b/backend/test/refusal-migration.spec.ts
+new file mode 100644
+index 0000000..ebefb19
+--- /dev/null
++++ b/backend/test/refusal-migration.spec.ts
+@@ -0,0 +1,60 @@
++import * as fs from 'node:fs';
++
++import { DataSource } from 'typeorm';
++
++import { dataSourceOptions } from '../src/data-source';
++import { MIGRATIONS } from '../src/migrations';
++import { seedUsers } from '../src/seed/seed';
++
++import { tempDbPath } from './helpers';
++
++it('upgrades populated legacy cases without opting them into refusal or changing stored deadlines and votes', async () => {
++  const { dir, dbPath } = tempDbPath();
++  const ds = new DataSource({ ...dataSourceOptions(dbPath), migrations: MIGRATIONS.slice(0, -1) });
++  await ds.initialize();
++  try {
++    await ds.runMigrations();
++    await seedUsers(ds);
++    const [{ id: creatorId }] = await ds.query(`SELECT id FROM users WHERE email = 'creator1@example.com'`);
++    const [{ id: jurorId }] = await ds.query(`SELECT id FROM users WHERE email = 'juror1@example.com'`);
++    for (const status of ['awaiting_jurors', 'voting', 'resolved']) {
++      await ds.query(
++        `INSERT INTO cases (creatorId,title,description,outcomes,voteWindowSeconds,panelSize,selectionMethod,status,result)
++        VALUES (?, ?, 'Details', '["A","B"]', 120, 1, 'manual', ?, ?)`,
++        [creatorId, status, status, status === 'resolved' ? 'A' : null],
++      );
++    }
++    await ds.query(
++      `INSERT INTO case_jurors (caseId,userId,position,drawnAt,deadline,outcomeIndex,votedAt)
++      SELECT id, ?, 0, '2030-01-01 00:00:00', '2030-01-01 00:02:00', 0, '2030-01-01 00:01:00'
++      FROM cases WHERE status != 'awaiting_jurors'`,
++      [jurorId],
++    );
++    const casesBefore = await ds.query('SELECT * FROM cases ORDER BY id');
++    const seatsBefore = await ds.query('SELECT * FROM case_jurors ORDER BY id');
++    // Reopen with the complete migration list, as a normal upgrade does.
++    await ds.destroy();
++    const upgraded = new DataSource(dataSourceOptions(dbPath));
++    await upgraded.initialize();
++    try {
++      expect(await upgraded.runMigrations()).toHaveLength(1);
++      expect(await upgraded.query('SELECT * FROM cases ORDER BY id')).toEqual(
++        casesBefore.map((c: object) => ({ ...c, refusalWindowSeconds: null })),
++      );
++      expect(await upgraded.query('SELECT * FROM case_jurors ORDER BY id')).toEqual(
++        seatsBefore.map((j: object) => ({
++          ...j,
++          selectedById: null,
++          predecessorId: null,
++          refusalDeadline: null,
++          refusedAt: null,
++        })),
++      );
++    } finally {
++      await upgraded.destroy();
++    }
++  } finally {
++    if (ds.isInitialized) await ds.destroy();
++    fs.rmSync(dir, { recursive: true, force: true });
++  }
++});
+diff --git a/backend/test/refusal.spec.ts b/backend/test/refusal.spec.ts
+new file mode 100644
+index 0000000..6eb4304
+--- /dev/null
++++ b/backend/test/refusal.spec.ts
+@@ -0,0 +1,168 @@
++import { Case, User } from '../src/entities';
++
++import { Browser, BootedApp, bootApp } from './helpers';
++
++const payload = {
++  title: 'Conflict case',
++  description: 'Details',
++  outcomes: ['A', 'B'],
++  voteWindowSeconds: 120,
++  selectionMethod: 'manual',
++  refusalWindowSeconds: 60,
++  panelSize: 3,
++};
++
++describe('manual refusal lifecycle over HTTP', () => {
++  let app: BootedApp;
++  let owner: Browser;
++  let admin: Browser;
++  let jurors: Browser[];
++  let ids: number[];
++  let now: Date;
++  const path = (id: number) => `/api/cases/${id}`;
++  const create = async (extra = {}) => {
++    const res = await owner.post('/api/cases', { ...payload, ...extra });
++    expect(res.status).toBe(201);
++    return res.body.id as number;
++  };
++  const draw = async (id: number, panel = ids.slice(0, 3)) => {
++    const res = await owner.post(`${path(id)}/draw`, { jurorIds: panel });
++    expect(res.status).toBe(200);
++    expect(res.body.case.status).toBe('refusal');
++    return res.body.case;
++  };
++  beforeAll(async () => {
++    now = new Date('2030-01-01T00:00:00Z');
++    app = await bootApp({ overrides: [{ provide: 'CLOCK', useValue: () => now }] });
++    owner = await new Browser(app).login('creator1@example.com');
++    admin = await new Browser(app).login('admin@example.com');
++    jurors = [];
++    ids = [];
++    for (let i = 1; i <= 5; i++) {
++      const email = `juror${i}@example.com`;
++      jurors.push(await new Browser(app).login(email));
++      ids.push((await app.dataSource.getRepository(User).findOneByOrFail({ email })).id);
++    }
++  });
++  afterAll(() => app.close());
++  beforeEach(() => {
++    now = new Date('2030-01-01T00:00:00Z');
++  });
++
++  it.each([undefined, null, 59, 2592001, 1.5])('requires a bounded explicit manual duration: %s', async (duration) => {
++    expect((await owner.post('/api/cases', { ...payload, refusalWindowSeconds: duration })).status).toBe(422);
++  });
++  it('rejects refusal configuration on random cases', async () => {
++    expect((await owner.post('/api/cases', { ...payload, selectionMethod: 'random' })).status).toBe(422);
++  });
++  it('silently opens voting at the logical cutoff and gives every seat the full window', async () => {
++    const id = await create();
++    await draw(id);
++    expect((await jurors[0].post(`${path(id)}/vote`, { outcomeIndex: 0 })).status).toBe(409);
++    now = new Date('2030-01-01T00:01:00Z');
++    expect((await jurors[0].post(`${path(id)}/refuse`, {})).status).toBe(409);
++    const detail = (await owner.get(path(id))).body;
++    expect(detail.status).toBe('voting');
++    expect(detail.jurors.map((j: { deadline: string }) => j.deadline)).toEqual(
++      Array(3).fill('2030-01-01T00:03:00.000Z'),
++    );
++    for (const juror of jurors.slice(0, 3))
++      expect((await juror.post(`${path(id)}/vote`, { outcomeIndex: 0 })).status).toBe(200);
++    expect((await owner.get(path(id))).body.result).toBe('A');
++  });
++  it('preserves chains, removes access and excludes all prior jurors from replacements', async () => {
++    const id = await create();
++    const first = await draw(id);
++    now = new Date('2030-01-01T00:00:59.999Z');
++    expect((await jurors[0].post(`${path(id)}/refuse`, {})).status).toBe(200);
++    expect((await jurors[0].get(path(id))).status).toBe(404);
++    expect((await jurors[0].post(`${path(id)}/vote`, { outcomeIndex: 0 })).status).toBe(404);
++    expect((await owner.get(`${path(id)}/eligible-jurors`)).body.map((j: { jurorId: number }) => j.jurorId)).toEqual(
++      ids.slice(3),
++    );
++    expect((await owner.post(`${path(id)}/replace`, { position: 1, jurorId: ids[3] })).status).toBe(409);
++    expect((await owner.post(`${path(id)}/replace`, { position: 0, jurorId: ids[0] })).status).toBe(422);
++    expect((await owner.post(`${path(id)}/replace`, { position: 0, jurorId: ids[3] })).status).toBe(200);
++    expect((await jurors[3].post(`${path(id)}/refuse`, {})).status).toBe(200);
++    now = new Date('2030-01-01T00:02:00Z');
++    const replacement = await admin.post(`${path(id)}/replace`, { position: 0, jurorId: ids[4] });
++    expect(replacement.status).toBe(200);
++    const history = replacement.body.assignmentHistory;
++    expect(history).toHaveLength(5);
++    expect(history[3].predecessorId).toBe(first.assignmentHistory[0].id);
++    expect(history[4].predecessorId).toBe(history[3].id);
++    expect(history[4]).toMatchObject({
++      position: 0,
++      jurorId: ids[4],
++      refusedAt: null,
++      refusalDeadline: '2030-01-01T00:03:00.000Z',
++    });
++    expect(history[4].selectedById).toBe(
++      (await app.dataSource.getRepository(User).findOneByOrFail({ email: 'admin@example.com' })).id,
++    );
++    expect((await jurors[1].get(path(id))).body.assignmentHistory).toEqual(history);
++    now = new Date('2030-01-01T00:03:00Z');
++    const detail = (await owner.get(path(id))).body;
++    expect(detail.status).toBe('voting');
++    expect(detail.jurors).toHaveLength(3);
++    expect(detail.jurors.every((j: { deadline: string }) => j.deadline === '2030-01-01T00:05:00.000Z')).toBe(true);
++    for (const i of [1, 2, 4]) expect((await jurors[i].post(`${path(id)}/vote`, { outcomeIndex: 1 })).status).toBe(200);
++    expect((await owner.get(path(id))).body.result).toBe('B');
++  });
++  it('waits indefinitely for multiple vacancies and an exhausted pool; expired individual windows stay closed', async () => {
++    const id = await create({ panelSize: 5 });
++    await draw(id, ids);
++    for (const i of [0, 1]) expect((await jurors[i].post(`${path(id)}/refuse`, {})).status).toBe(200);
++    now = new Date('2031-01-01T00:00:00Z');
++    expect((await owner.get(path(id))).body.status).toBe('refusal');
++    expect((await owner.get(`${path(id)}/eligible-jurors`)).body).toEqual([]);
++    expect((await jurors[2].post(`${path(id)}/refuse`, {})).status).toBe(409);
++  });
++  it('settles late reads without extending voting', async () => {
++    const id = await create();
++    await draw(id);
++    now = new Date('2030-01-01T00:10:00Z');
++    const list = (await owner.get('/api/cases')).body;
++    expect(list.find((c: { id: number }) => c.id === id)).toMatchObject({ status: 'resolved', result: null });
++  });
++  it('protects active roles, releases historical roles and retains independent owner access', async () => {
++    const user = await app.dataSource.getRepository(User).findOneByOrFail({ email: 'creator1@example.com' });
++    await app.dataSource.getRepository(User).update(user.id, { isJuror: true });
++    const id = await create({ panelSize: 1 });
++    await draw(id, [user.id]);
++    expect((await admin.put(`/api/admin/users/${user.id}/roles`, { roles: ['creator'] })).status).toBe(409);
++    expect((await owner.post(`${path(id)}/refuse`, {})).status).toBe(200);
++    expect((await owner.get(path(id))).status).toBe(200);
++    expect((await owner.post(`${path(id)}/vote`, { outcomeIndex: 0 })).status).toBe(403);
++    expect((await admin.put(`/api/admin/users/${user.id}/roles`, { roles: ['creator'] })).status).toBe(200);
++    expect((await owner.post(`${path(id)}/replace`, { position: 0, jurorId: ids[0] })).status).toBe(200);
++  });
++  it('enforces authentication, CSRF, visibility, ownership and strict request bodies', async () => {
++    const id = await create();
++    await draw(id);
++    const outsider = await new Browser(app).login('user@example.com');
++    for (const suffix of ['refuse', 'replace']) {
++      expect((await new Browser(app).post(`${path(id)}/${suffix}`, { bad: true })).status).toBe(401);
++      expect((await outsider.post(`${path(id)}/${suffix}`, {}, { csrf: false })).status).toBe(403);
++      expect((await owner.post(`${path(id)}/${suffix}`, {}, { csrf: false })).status).toBe(403);
++    }
++    expect((await outsider.post(`${path(id)}/refuse`, {})).status).toBe(404);
++    expect((await outsider.post(`${path(id)}/replace`, {})).status).toBe(403);
++    expect((await owner.post(`${path(id)}/refuse`, { bad: true })).status).toBe(403);
++    expect((await jurors[0].post(`${path(id)}/refuse`, { bad: true })).status).toBe(422);
++    expect((await owner.post(`${path(id)}/replace`, {})).status).toBe(422);
++    expect((await admin.post('/api/cases/999999/replace', {})).status).toBe(404);
++  });
++  it('keeps stored legacy manual cases and random cases on the old lifecycle', async () => {
++    const legacy = await app.dataSource.getRepository(Case).save({
++      ...payload,
++      refusalWindowSeconds: null,
++      selectionMethod: 'manual' as const,
++      creatorId: (await app.dataSource.getRepository(User).findOneByOrFail({ email: 'creator1@example.com' })).id,
++    });
++    const res = await owner.post(`${path(legacy.id)}/draw`, { jurorIds: ids.slice(0, 3) });
++    expect(res.body.case.status).toBe('voting');
++    const id = await create({ selectionMethod: 'random', refusalWindowSeconds: undefined });
++    expect((await owner.post(`${path(id)}/draw`)).body.case.status).toBe('voting');
++  });
++});
+diff --git a/backend/test/vote.spec.ts b/backend/test/vote.spec.ts
+index 19a4ba8..1ccd0ed 100644
+--- a/backend/test/vote.spec.ts
++++ b/backend/test/vote.spec.ts
+@@ -1,4 +1,4 @@
+-import { User } from '../src/entities';
++import { Case, User } from '../src/entities';
+ 
+ import { Browser, BootedApp, bootApp } from './helpers';
+ 
+@@ -32,9 +32,12 @@ describe('voting and resolution over HTTP', () => {
+       description: 'Details',
+       outcomes,
+       voteWindowSeconds: WINDOW_SECONDS,
++      refusalWindowSeconds: 60,
+       selectionMethod: 'manual',
+     });
+     expect(created.status).toBe(201);
++    // Legacy stored manual cases keep immediate voting.
++    await booted.dataSource.getRepository(Case).update(created.body.id, { refusalWindowSeconds: null });
+     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+     });
+diff --git a/contract-tests/tests/acceptance.contract.test.ts b/contract-tests/tests/acceptance.contract.test.ts
+index e81337e..f8bcf3e 100644
+--- a/contract-tests/tests/acceptance.contract.test.ts
++++ b/contract-tests/tests/acceptance.contract.test.ts
+@@ -56,6 +56,7 @@ describe('acceptance: one case end to end', () => {
+       description: 'Details',
+       outcomes: ['A', 'B'],
+       voteWindowSeconds: 120,
++      refusalWindowSeconds: 60,
+       selectionMethod: 'manual',
+     });
+     const seated = await creator.post(`/api/cases/${manual.body.id}/draw`, {
+diff --git a/contract-tests/tests/admin.contract.test.ts b/contract-tests/tests/admin.contract.test.ts
+index f3cd125..635c968 100644
+--- a/contract-tests/tests/admin.contract.test.ts
++++ b/contract-tests/tests/admin.contract.test.ts
+@@ -73,6 +73,7 @@ describe('role mutations', () => {
+       description: 'Details',
+       outcomes: ['A', 'B'],
+       voteWindowSeconds: 3600,
++      refusalWindowSeconds: 60,
+       selectionMethod: 'manual',
+     });
+     const panel = ['user@example.com', 'juror4@example.com', 'juror5@example.com'];
+@@ -86,10 +87,10 @@ describe('role mutations', () => {
+       (await admin.get(LIST_URL)).body.find((u: { email: string }) => u.email === 'user@example.com').roles,
+     ).toEqual(['juror', 'user']);
+ 
+-    // Once every juror voted the case is resolved and the role can go (this also leaves no active case behind).
++    // Historical refused assignments no longer block role removal.
+     for (const email of panel) {
+       const juror = await new Client().login(email);
+-      expect((await juror.post(`/api/cases/${created.body.id}/vote`, { outcomeIndex: 0 })).status).toBe(200);
++      expect((await juror.post(`/api/cases/${created.body.id}/refuse`, {})).status).toBe(200);
+     }
+     const removed = await admin.put(rolesUrl(idOf('user@example.com')), { roles: [] });
+     expect(removed.status).toBe(200);
+diff --git a/contract-tests/tests/cases.contract.test.ts b/contract-tests/tests/cases.contract.test.ts
+index 6cf2bfd..eb0d607 100644
+--- a/contract-tests/tests/cases.contract.test.ts
++++ b/contract-tests/tests/cases.contract.test.ts
+@@ -14,6 +14,7 @@ describe('cases create/list/detail contract', () => {
+     expect(created.status).toBe(201);
+     expect(created.body).toEqual({
+       ...payload,
++      refusalWindowSeconds: null,
+       id: expect.any(Number),
+       creatorId: expect.any(Number),
+       panelSize: 3,
+@@ -46,7 +47,7 @@ describe('cases create/list/detail contract', () => {
+     const admin = await new Client().login('admin@example.com');
+     const users = await admin.get('/api/admin/users');
+     const ids = Object.fromEntries(users.body.map((u: { email: string; id: number }) => [u.email, u.id]));
+-    const created = await owner.post('/api/cases', { ...payload, selectionMethod: 'manual' });
++    const created = await owner.post('/api/cases', { ...payload, refusalWindowSeconds: 60, selectionMethod: 'manual' });
+     const id = created.body.id;
+     const jurorIds = [ids['juror3@example.com'], ids['juror1@example.com'], ids['juror2@example.com']];
+     const draw = await owner.post(`/api/cases/${id}/draw`, { jurorIds });
+diff --git a/contract-tests/tests/draw.contract.test.ts b/contract-tests/tests/draw.contract.test.ts
+index 6e8c1fd..a7579e0 100644
+--- a/contract-tests/tests/draw.contract.test.ts
++++ b/contract-tests/tests/draw.contract.test.ts
+@@ -57,7 +57,7 @@ describe('jury draw contract', () => {
+ 
+   it('lists eligible jurors (id and name, no email) only to whoever can draw', async () => {
+     const owner = await new Client().login('creator1@example.com');
+-    const created = await owner.post('/api/cases', { ...payload, selectionMethod: 'manual' });
++    const created = await owner.post('/api/cases', { ...payload, refusalWindowSeconds: 60, selectionMethod: 'manual' });
+     const path = `/api/cases/${created.body.id}/eligible-jurors`;
+     const listed = await owner.get(path);
+     expect(listed.status).toBe(200);
+@@ -77,7 +77,7 @@ describe('jury draw contract', () => {
+   it('manual assignment only accepts users with the juror role', async () => {
+     const ids = await userIds();
+     const owner = await new Client().login('creator1@example.com');
+-    const manual = { ...payload, selectionMethod: 'manual' };
++    const manual = { ...payload, refusalWindowSeconds: 60, selectionMethod: 'manual' };
+     const rejected = await owner.post('/api/cases', manual);
+     const bad = await owner.post(`/api/cases/${rejected.body.id}/draw`, {
+       jurorIds: [ids['juror1@example.com'], ids['juror2@example.com'], ids['user@example.com']],
+diff --git a/contract-tests/tests/refusal.contract.test.ts b/contract-tests/tests/refusal.contract.test.ts
+new file mode 100644
+index 0000000..24e40af
+--- /dev/null
++++ b/contract-tests/tests/refusal.contract.test.ts
+@@ -0,0 +1,57 @@
++import { Client } from '../src/client';
++
++const input = {
++  title: 'Refusal contract',
++  description: 'Conflict',
++  outcomes: ['A', 'B'],
++  voteWindowSeconds: 120,
++  panelSize: 1,
++  selectionMethod: 'manual',
++  refusalWindowSeconds: 86400,
++};
++
++it('preserves a refusal and linked replacement while enforcing access and guard order', async () => {
++  const owner = await new Client().login('creator1@example.com');
++  const admin = await new Client().login('admin@example.com');
++  const juror = await new Client().login('juror1@example.com');
++  const outsider = await new Client().login('user@example.com');
++  const users = (await admin.get('/api/admin/users')).body;
++  const idOf = (email: string) => users.find((u: { email: string }) => u.email === email).id;
++  const created = await owner.post('/api/cases', input);
++  expect(created.status).toBe(201);
++  const path = `/api/cases/${created.body.id}`;
++  const drawn = await owner.post(`${path}/draw`, { jurorIds: [idOf('juror1@example.com')] });
++  expect(drawn.body.case.status).toBe('refusal');
++  for (const endpoint of ['refuse', 'replace']) {
++    expect((await new Client().post(`${path}/${endpoint}`, { invalid: true })).status).toBe(401);
++    for (const caller of [owner, outsider]) {
++      const res = await caller.post(`${path}/${endpoint}`, { invalid: true }, { csrf: false });
++      expect(res.status).toBe(403);
++      expect(res.body.detail).toBe('CSRF check Failed');
++    }
++  }
++  expect((await outsider.post(`${path}/refuse`, {})).status).toBe(404);
++  expect((await juror.post(`${path}/replace`, {})).status).toBe(403);
++  expect((await owner.post(`${path}/refuse`, {})).status).toBe(403);
++  expect((await juror.post(`${path}/refuse`, { invalid: true })).status).toBe(422);
++  expect((await admin.post(`${path}/replace`, {})).status).toBe(422);
++  expect((await juror.post(`${path}/refuse`, {})).status).toBe(200);
++  expect((await juror.get(path)).status).toBe(404);
++  expect((await juror.post(`${path}/refuse`, {})).status).toBe(404);
++  expect(
++    (await owner.get(`${path}/eligible-jurors`)).body.some(
++      (j: { jurorId: number }) => j.jurorId === idOf('juror1@example.com'),
++    ),
++  ).toBe(false);
++  const replaced = await admin.post(`${path}/replace`, { position: 0, jurorId: idOf('juror2@example.com') });
++  expect(replaced.status).toBe(200);
++  expect(replaced.body.assignmentHistory).toHaveLength(2);
++  expect(replaced.body.assignmentHistory[0].refusedAt).toEqual(expect.any(String));
++  expect(replaced.body.assignmentHistory[1]).toMatchObject({
++    predecessorId: drawn.body.case.assignmentHistory[0].id,
++    selectedById: idOf('admin@example.com'),
++    jurorId: idOf('juror2@example.com'),
++    refusedAt: null,
++  });
++  expect(JSON.stringify(replaced.body)).not.toContain('@example.com');
++});
+diff --git a/e2e/tests/manual-draw.spec.ts b/e2e/tests/manual-draw.spec.ts
+index c080db7..87b657b 100644
+--- a/e2e/tests/manual-draw.spec.ts
++++ b/e2e/tests/manual-draw.spec.ts
+@@ -39,11 +39,11 @@ test('a creator picks a manual panel by hand and it is seated in that order', as
+   await assign.click();
+ 
+   const panel = page.getByRole('list', { name: 'Drawn jurors' }).getByRole('listitem');
+-  await expect(panel).toHaveText([/^Juror 3 · Vote by/, /^Juror 1 · Vote by/, /^Juror 5 · Vote by/]);
+-  await expect(page.getByText('Voting').first()).toBeVisible();
++  await expect(panel).toHaveText([/^Juror 3 · Refuse by/, /^Juror 1 · Refuse by/, /^Juror 5 · Refuse by/]);
++  await expect(page.getByText('Refusal period', { exact: true }).first()).toBeVisible();
+   await expect(add).toHaveCount(0);
+ 
+   await page.reload();
+-  await expect(panel).toHaveText([/^Juror 3 · Vote by/, /^Juror 1 · Vote by/, /^Juror 5 · Vote by/]);
++  await expect(panel).toHaveText([/^Juror 3 · Refuse by/, /^Juror 1 · Refuse by/, /^Juror 5 · Refuse by/]);
+   expect(consoleErrors).toEqual([]);
+ });
+diff --git a/e2e/tests/refusal.spec.ts b/e2e/tests/refusal.spec.ts
+new file mode 100644
+index 0000000..29441f1
+--- /dev/null
++++ b/e2e/tests/refusal.spec.ts
+@@ -0,0 +1,46 @@
++import { expect, login, test } from '../src/fixtures';
++
++test('a juror confirms refusal, loses access, and the creator fills the vacant seat with linked history', async ({
++  page,
++}) => {
++  await login(page, 'creator1@example.com');
++  await page.goto('/cases/new');
++  await page.getByLabel('Title').fill(`Refusal e2e ${Date.now()}`);
++  await page.getByLabel('Description').fill('A conflict requires a replacement.');
++  await page.getByLabel('Outcome 1', { exact: true }).fill('A');
++  await page.getByLabel('Outcome 2', { exact: true }).fill('B');
++  await page.getByText('Manual selection', { exact: true }).click();
++  await expect(page.getByLabel('Refusal hours', { exact: true })).toHaveValue('0');
++  await expect(page.getByLabel('Refusal days', { exact: true })).toHaveValue('1');
++  await page.getByRole('button', { name: 'Create case' }).click();
++  await expect(page.getByRole('heading', { name: 'Jurors', exact: true })).toBeVisible();
++  const url = page.url();
++  for (const name of ['Juror 1', 'Juror 2', 'Juror 3']) {
++    await page.getByRole('button', { name: /Add a juror/ }).click();
++    await page.getByRole('option', { name, exact: true }).click();
++  }
++  await page.getByRole('button', { name: 'Assign jurors', exact: true }).click();
++  await expect(page.getByText('Refusal period', { exact: true }).first()).toBeVisible();
++  await page.getByRole('button', { name: 'Log out' }).click();
++  await login(page, 'juror1@example.com');
++  await page.goto(url);
++  await page.getByRole('button', { name: 'Refuse assignment', exact: true }).click();
++  const dialog = page.getByRole('dialog');
++  await expect(dialog).toContainText('permanently excluded');
++  await dialog.getByRole('button', { name: 'Keep assignment' }).click();
++  await expect(dialog).toHaveCount(0);
++  await page.getByRole('button', { name: 'Refuse assignment', exact: true }).click();
++  await dialog.getByRole('button', { name: 'Confirm refusal' }).click();
++  await expect(page.getByText('Assignment refused.', { exact: false })).toBeVisible();
++  await page.goto(url);
++  await expect(page.getByRole('heading', { name: 'Case not found' })).toBeVisible();
++  await page.getByRole('button', { name: 'Log out' }).click();
++  await login(page, 'creator1@example.com');
++  await page.goto(url);
++  await page.getByLabel('Replacement for seat 1').selectOption({ label: 'Juror 4' });
++  await page.getByRole('button', { name: 'Fill seat 1' }).click();
++  await expect(page.getByRole('list', { name: 'Assignment history' }).getByRole('listitem')).toHaveCount(4);
++  await page.reload();
++  await expect(page.getByRole('list', { name: 'Drawn jurors' })).toContainText('Juror 4');
++  await expect(page.getByRole('list', { name: 'Assignment history' })).toContainText('Replaces assignment');
++});
+diff --git a/frontend/src/api.ts b/frontend/src/api.ts
+index 1ce8c63..cd1194d 100644
+--- a/frontend/src/api.ts
++++ b/frontend/src/api.ts
+@@ -2,13 +2,14 @@ export type User = { id: number; email: string; roles: string[] };
+ export type ExtraRole = 'creator' | 'juror';
+ 
+ export type SelectionMethod = 'random' | 'manual';
+-export type CaseStatus = 'awaiting_jurors' | 'voting' | 'resolved';
++export type CaseStatus = 'awaiting_jurors' | 'refusal' | 'voting' | 'resolved';
+ 
+ export type NewCase = {
+   title: string;
+   description: string;
+   outcomes: string[];
+   voteWindowSeconds: number;
++  refusalWindowSeconds?: number | null;
+   panelSize: number;
+   selectionMethod: SelectionMethod;
+ };
+@@ -36,7 +37,19 @@ export type DrawnJuror = {
+ };
+ 
+ /** Body of `GET /api/cases/:id`: the case plus its seated panel in draw order (empty before the draw). */
+-export type CaseDetail = Case & { jurors: DrawnJuror[] };
++export type Assignment = {
++  id: number;
++  position: number;
++  jurorId: number;
++  name: string;
++  selectedById: number | null;
++  selectedByName: string | null;
++  predecessorId: number | null;
++  drawnAt: string;
++  refusalDeadline: string | null;
++  refusedAt: string | null;
++};
++export type CaseDetail = Case & { jurors: DrawnJuror[]; assignmentHistory?: Assignment[] };
+ 
+ /** A juror who can be picked for a manual panel (`GET /api/cases/:id/eligible-jurors`): no email. */
+ export type EligibleJuror = { jurorId: number; name: string };
+@@ -147,3 +160,10 @@ export async function drawJurors(caseId: number, jurorIds?: number[]): Promise<D
+ export async function listEligibleJurors(caseId: number): Promise<EligibleJuror[]> {
+   return (await request('GET', `/cases/${caseId}/eligible-jurors`)).json();
+ }
++
++export async function refuseAssignment(caseId: number): Promise<void> {
++  await request('POST', `/cases/${caseId}/refuse`, {});
++}
++export async function replaceJuror(caseId: number, position: number, jurorId: number): Promise<CaseDetail> {
++  return (await request('POST', `/cases/${caseId}/replace`, { position, jurorId })).json();
++}
+diff --git a/frontend/src/cases/draft.test.ts b/frontend/src/cases/draft.test.ts
+index fedf1ea..7da408f 100644
+--- a/frontend/src/cases/draft.test.ts
++++ b/frontend/src/cases/draft.test.ts
+@@ -103,6 +103,7 @@ test('toNewCase trims text and converts the window to seconds', () => {
+     voteWindowSeconds: 129_600,
+     panelSize: 5,
+     selectionMethod: 'manual',
++    refusalWindowSeconds: 86400,
+   });
+ });
+ 
+diff --git a/frontend/src/cases/draft.ts b/frontend/src/cases/draft.ts
+index b490593..fe9a62f 100644
+--- a/frontend/src/cases/draft.ts
++++ b/frontend/src/cases/draft.ts
+@@ -25,6 +25,7 @@ export type CaseDraft = {
+   description: string;
+   outcomes: string[];
+   window: Record<WindowPart, string>;
++  refusalWindow: Record<WindowPart, string>;
+   panelSize: number;
+   selectionMethod: SelectionMethod;
+ };
+@@ -35,6 +36,7 @@ export type DraftErrors = {
+   /** Per outcome, same order as the draft. */
+   outcomes?: Array<string | undefined>;
+   window?: string;
++  refusalWindow?: string;
+   windowParts?: WindowPart[];
+   /** Anything that cannot be shown next to a field. */
+   general?: string;
+@@ -45,6 +47,7 @@ export const emptyDraft = (): CaseDraft => ({
+   description: '',
+   outcomes: ['', ''],
+   window: { days: '0', hours: '0', minutes: '2' },
++  refusalWindow: { days: '1', hours: '0', minutes: '0' },
+   panelSize: 3,
+   selectionMethod: 'random',
+ });
+@@ -103,6 +106,10 @@ export function validateDraft(draft: CaseDraft): DraftErrors {
+   if (outcomes) errors.outcomes = outcomes;
+ 
+   Object.assign(errors, validateWindow(draft.window));
++  if (draft.selectionMethod === 'manual') {
++    const error = validateWindow(draft.refusalWindow).window;
++    if (error) errors.refusalWindow = error;
++  }
+   return errors;
+ }
+ 
+@@ -116,6 +123,7 @@ export const toNewCase = (draft: CaseDraft): NewCase => ({
+   voteWindowSeconds: draftWindowSeconds(draft.window),
+   panelSize: draft.panelSize,
+   selectionMethod: draft.selectionMethod,
++  ...(draft.selectionMethod === 'manual' ? { refusalWindowSeconds: draftWindowSeconds(draft.refusalWindow) } : {}),
+ });
+ 
+ const isIssue = (value: unknown): value is ValidationIssue =>
+@@ -129,6 +137,7 @@ export function errorsFromServer(detail: unknown, outcomeCount: number): DraftEr
+     if (!isIssue(issue)) continue;
+     const [, , field, index] = issue.loc;
+     if (field === 'title' || field === 'description') errors[field] ??= issue.msg;
++    else if (field === 'refusalWindowSeconds') errors.refusalWindow ??= issue.msg;
+     else if (field === 'voteWindowSeconds') {
+       errors.window ??= issue.msg;
+       errors.windowParts = WINDOW_PARTS.map((p) => p.key);
+diff --git a/frontend/src/cases/presentation.ts b/frontend/src/cases/presentation.ts
+index 936e1cc..e9136a0 100644
+--- a/frontend/src/cases/presentation.ts
++++ b/frontend/src/cases/presentation.ts
+@@ -2,6 +2,7 @@ import { ApiError, type CaseStatus, type ValidationIssue } from '../api';
+ 
+ export const STATUS_LABELS: Record<CaseStatus, string> = {
+   awaiting_jurors: 'Awaiting jurors',
++  refusal: 'Refusal period',
+   voting: 'Voting',
+   resolved: 'Resolved',
+ };
+diff --git a/frontend/src/cases/refusal.test.ts b/frontend/src/cases/refusal.test.ts
+new file mode 100644
+index 0000000..9f13f6b
+--- /dev/null
++++ b/frontend/src/cases/refusal.test.ts
+@@ -0,0 +1,22 @@
++import { describe, expect, it } from 'vitest';
++import { emptyDraft, toNewCase, validateDraft } from './draft';
++
++describe('manual refusal configuration', () => {
++  it('supplies the 24-hour default only for manual cases', () => {
++    const draft = emptyDraft();
++    expect(toNewCase(draft)).not.toHaveProperty('refusalWindowSeconds');
++    draft.selectionMethod = 'manual';
++    expect(toNewCase(draft)).toHaveProperty('refusalWindowSeconds', 86400);
++  });
++  it('validates refusal duration separately from voting', () => {
++    const draft = {
++      ...emptyDraft(),
++      title: 'Test case',
++      description: 'Details',
++      outcomes: ['A', 'B'],
++      selectionMethod: 'manual' as const,
++      refusalWindow: { days: '0', hours: '0', minutes: '0' },
++    };
++    expect(validateDraft(draft)).toHaveProperty('refusalWindow');
++  });
++});
+diff --git a/frontend/src/components/CaseDetailPage.tsx b/frontend/src/components/CaseDetailPage.tsx
+index 538a815..5ab39a9 100644
+--- a/frontend/src/components/CaseDetailPage.tsx
++++ b/frontend/src/components/CaseDetailPage.tsx
+@@ -8,6 +8,7 @@ import { STATUS_LABELS, jurorCount, resultLabel } from '../cases/presentation';
+ import CaseStatusBadge from './CaseStatusBadge';
+ import DrawJurorsPanel from './DrawJurorsPanel';
+ import VotePanel from './VotePanel';
++import RefusalPanel from './RefusalPanel';
+ 
+ const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
+ 
+@@ -66,6 +67,7 @@ function CaseDetail({
+     ['Status', STATUS_LABELS[c.status]],
+     ['Result', c.status === 'resolved' ? resultLabel(c.result) : 'Not resolved yet'],
+     ['Voting window', `${formatDuration(c.voteWindowSeconds)} (${c.voteWindowSeconds} seconds)`],
++    ...(c.refusalWindowSeconds ? [['Refusal window', formatDuration(c.refusalWindowSeconds)]] : []),
+     ['Panel size', jurorCount(c.panelSize)],
+     ['Selection method', c.selectionMethod === 'random' ? 'Random draw' : 'Manual selection'],
+     ['Created', new Date(c.createdAt).toLocaleString()],
+@@ -118,7 +120,9 @@ function CaseDetail({
+                 {value}
+                 {label === 'Voting window' && (
+                   <p className="mt-2 text-sm text-klerosUIComponentsSecondaryText">
+-                    Each juror’s window starts when they are drawn. This is not a deadline date.
++                    {c.refusalWindowSeconds
++                      ? 'Voting starts for the complete panel when the last refusal window closes.'
++                      : 'Each juror’s window starts when they are drawn. This is not a deadline date.'}
+                   </p>
+                 )}
+               </dd>
+@@ -132,6 +136,7 @@ function CaseDetail({
+         onDrawn={(result) => setCase(result.case)}
+         onUnauthorized={onUnauthorized}
+       />
++      <RefusalPanel value={c} user={user} onChanged={setCase} onUnauthorized={onUnauthorized} />
+       <VotePanel value={c} user={user} onVoted={setCase} onUnauthorized={onUnauthorized} />
+       <p className="text-sm text-klerosUIComponentsSecondaryText">Cases cannot be edited or deleted.</p>
+     </article>
+diff --git a/frontend/src/components/CaseStatusBadge.tsx b/frontend/src/components/CaseStatusBadge.tsx
+index 3bd341b..ddf34ca 100644
+--- a/frontend/src/components/CaseStatusBadge.tsx
++++ b/frontend/src/components/CaseStatusBadge.tsx
+@@ -3,6 +3,7 @@ import type { CaseStatus } from '../api';
+ import { STATUS_LABELS } from '../cases/presentation';
+ const styles: Record<CaseStatus, string> = {
+   awaiting_jurors: 'border-klerosUIComponentsWarning bg-klerosUIComponentsWarningLight',
++  refusal: 'border-klerosUIComponentsWarning bg-klerosUIComponentsWarningLight',
+   voting: 'border-klerosUIComponentsPrimaryBlue bg-klerosUIComponentsMediumBlue',
+   resolved: 'border-klerosUIComponentsSuccess bg-klerosUIComponentsSuccessLight',
+ };
+diff --git a/frontend/src/components/CasesSection.test.tsx b/frontend/src/components/CasesSection.test.tsx
+index 1c1b619..6842ace 100644
+--- a/frontend/src/components/CasesSection.test.tsx
++++ b/frontend/src/components/CasesSection.test.tsx
+@@ -214,6 +214,7 @@ test('sends the chosen window, panel size and selection method', async () => {
+     voteWindowSeconds: 129_600,
+     panelSize: 5,
+     selectionMethod: 'manual',
++    refusalWindowSeconds: 86400,
+   });
+   expect(await screen.findByText('1 day 12 hours (129600 seconds)')).toBeInTheDocument();
+ });
+diff --git a/frontend/src/components/CasesSection.tsx b/frontend/src/components/CasesSection.tsx
+index c4bacca..6b427e1 100644
+--- a/frontend/src/components/CasesSection.tsx
++++ b/frontend/src/components/CasesSection.tsx
+@@ -1,5 +1,5 @@
+ import { Button } from '@kleros/ui-components-library';
+-import { Link, useNavigate } from 'react-router-dom';
++import { Link, useLocation, useNavigate } from 'react-router-dom';
+ import { listCases } from '../api';
+ import { resultLabel } from '../cases/presentation';
+ import { useCaseRead } from '../cases/useCaseRead';
+@@ -11,9 +11,13 @@ const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUICom
+ 
+ function CaseList({ canCreate, onUnauthorized }: Props) {
+   const navigate = useNavigate();
++  const location = useLocation();
+   const { state, retry } = useCaseRead(listCases, onUnauthorized);
+   return (
+     <section aria-labelledby="cases-heading" className="flex flex-col gap-5">
++      {(location.state as { refused?: boolean } | null)?.refused && (
++        <p role="status">Assignment refused. You no longer have juror access to that case.</p>
++      )}
+       <div className="flex items-center justify-between gap-4">
+         <div>
+           <h1 id="cases-heading" className="text-2xl font-semibold">
+diff --git a/frontend/src/components/CreateCaseForm.tsx b/frontend/src/components/CreateCaseForm.tsx
+index b147651..aed5131 100644
+--- a/frontend/src/components/CreateCaseForm.tsx
++++ b/frontend/src/components/CreateCaseForm.tsx
+@@ -40,6 +40,7 @@ export default function CreateCaseForm({ onCreated, onCancel, onUnauthorized }:
+   const [description, setDescription] = useState(initial.description);
+   const [outcomes, setOutcomes] = useState<OutcomeRow[]>(initial.outcomes.map((value, key) => ({ key, value })));
+   const [voteWindow, setVoteWindow] = useState(initial.window);
++  const [refusalWindow, setRefusalWindow] = useState(initial.refusalWindow);
+   const [panelSize, setPanelSize] = useState(initial.panelSize);
+   const [selectionMethod, setSelectionMethod] = useState<SelectionMethod>(initial.selectionMethod);
+   // Errors only show after the first submit attempt; then they follow every edit.
+@@ -52,6 +53,7 @@ export default function CreateCaseForm({ onCreated, onCancel, onUnauthorized }:
+     description,
+     outcomes: outcomes.map((o) => o.value),
+     window: voteWindow,
++    refusalWindow,
+     panelSize,
+     selectionMethod,
+   };
+@@ -185,10 +187,33 @@ export default function CreateCaseForm({ onCreated, onCancel, onUnauthorized }:
+           </p>
+         )}
+         <p id="window-help" className="text-sm text-klerosUIComponentsSecondaryText">
+-          Each juror has this long to vote, starting when they are drawn.
++          {selectionMethod === 'manual'
++            ? 'The panel gets this long to vote after all refusal windows close and every seat is filled.'
++            : 'Each juror has this long to vote, starting when they are drawn.'}
+         </p>
+       </fieldset>
+ 
++      {selectionMethod === 'manual' && (
++        <fieldset className="flex flex-col gap-2">
++          <legend>Refusal window</legend>
++          <div className="flex flex-wrap gap-4">
++            {WINDOW_PARTS.map(({ key, label }) => (
++              <TextField
++                key={key}
++                label={`Refusal ${label.toLowerCase()}`}
++                aria-label={`Refusal ${label.toLowerCase()}`}
++                className="w-28"
++                value={refusalWindow[key]}
++                inputProps={{ inputMode: 'numeric' }}
++                isInvalid={!!errors.refusalWindow}
++                onChange={edit((value: string) => setRefusalWindow((w) => ({ ...w, [key]: value })))}
++              />
++            ))}
++          </div>
++          {errors.refusalWindow && <p role="alert">{errors.refusalWindow}</p>}
++          <p>Between 1 minute and 30 days. Starts separately for each drawn juror. Silence means continuing.</p>
++        </fieldset>
++      )}
+       <div className="flex flex-wrap gap-8">
+         <div className="flex flex-col gap-1">
+           <DropdownSelect
+diff --git a/frontend/src/components/DrawJurorsPanel.tsx b/frontend/src/components/DrawJurorsPanel.tsx
+index f13c5db..ee0c2b7 100644
+--- a/frontend/src/components/DrawJurorsPanel.tsx
++++ b/frontend/src/components/DrawJurorsPanel.tsx
+@@ -20,6 +20,7 @@ export default function DrawJurorsPanel({
+   const [drawing, setDrawing] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+ 
++  if (c.status === 'refusal' && c.jurors.length === 0) return null;
+   if (c.jurors.length > 0) return <DrawnJurorsList value={c} />;
+   if (c.status !== 'awaiting_jurors') return null;
+   if (c.selectionMethod === 'manual') {
+@@ -84,8 +85,10 @@ function DrawnJurorsList({ value: c }: Readonly<{ value: CaseDetail }>) {
+             <span className="text-klerosUIComponentsSecondaryText">
+               {' '}
+               {/* Deadlines no longer matter once the case is resolved. */}
+-              {c.status !== 'resolved' && `· Vote by ${new Date(juror.deadline).toLocaleString()} `}·{' '}
+-              {voteStatus(c, juror)}
++              {c.status === 'refusal'
++                ? `· Refuse by ${new Date(c.assignmentHistory!.find((a) => a.jurorId === juror.jurorId && !a.refusedAt)!.refusalDeadline!).toLocaleString()} `
++                : c.status !== 'resolved' && `· Vote by ${new Date(juror.deadline).toLocaleString()} `}
++              · {voteStatus(c, juror)}
+             </span>
+           </li>
+         ))}
+diff --git a/frontend/src/components/RefusalPanel.tsx b/frontend/src/components/RefusalPanel.tsx
+new file mode 100644
+index 0000000..7545fac
+--- /dev/null
++++ b/frontend/src/components/RefusalPanel.tsx
+@@ -0,0 +1,208 @@
++import { useEffect, useState } from 'react';
++import { Button } from '@kleros/ui-components-library';
++import { useNavigate } from 'react-router-dom';
++import {
++  ApiError,
++  getCase,
++  listEligibleJurors,
++  refuseAssignment,
++  replaceJuror,
++  type CaseDetail,
++  type EligibleJuror,
++  type User,
++} from '../api';
++import { errorMessage } from '../cases/presentation';
++
++export default function RefusalPanel({
++  value: c,
++  user,
++  onChanged,
++  onUnauthorized,
++}: Readonly<{
++  value: CaseDetail;
++  user: User;
++  onChanged: (c: CaseDetail) => void;
++  onUnauthorized: () => void;
++}>) {
++  const [confirming, setConfirming] = useState(false);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [now, setNow] = useState(() => Date.now());
++  const navigate = useNavigate();
++  useEffect(() => {
++    if (c.status !== 'refusal') return;
++    const timer = window.setInterval(() => setNow(Date.now()), 1000);
++    return () => window.clearInterval(timer);
++  }, [c.status]);
++  const history = c.assignmentHistory;
++  if (!history) return null;
++  const current = history.filter((a) => !a.refusedAt);
++  const own = current.find((a) => a.jurorId === user.id);
++  const canReplace = user.id === c.creatorId || user.roles.includes('admin');
++  const handleError = (e: unknown) => {
++    if (e instanceof ApiError && e.status === 401) onUnauthorized();
++    else setError(errorMessage(e, 'Could not update the assignment. Please retry or refresh the case.'));
++  };
++  const refuse = async () => {
++    setBusy(true);
++    setError(null);
++    try {
++      await refuseAssignment(c.id);
++      if (user.id === c.creatorId || user.roles.includes('admin')) onChanged(await getCase(String(c.id)));
++      else navigate('/cases', { state: { refused: true } });
++      setConfirming(false);
++    } catch (e) {
++      handleError(e);
++    } finally {
++      setBusy(false);
++    }
++  };
++  return (
++    <section className="flex flex-col gap-4 rounded-base border border-klerosUIComponentsStroke p-6">
++      {c.status === 'refusal' && (
++        <>
++          <h2 className="text-lg font-semibold">Refusal period</h2>
++          <p>
++            Silence means continuing. Voting begins only when every seat is filled and every current refusal window has
++            closed.
++          </p>
++          <Button
++            text="Refresh case"
++            variant="secondary"
++            onPress={() => {
++              void getCase(String(c.id)).then(onChanged, handleError);
++            }}
++          />
++          {own && own.refusalDeadline && now < Date.parse(own.refusalDeadline) && (
++            <Button text="Refuse assignment" onPress={() => setConfirming(true)} />
++          )}
++          {confirming && (
++            <dialog open aria-label="Confirm assignment refusal" className="relative m-0 rounded-base border p-5">
++              <p>
++                You will lose juror access and be permanently excluded from further draws for this case. This refusal is
++                final.
++              </p>
++              <Button
++                text="Keep assignment"
++                variant="secondary"
++                isDisabled={busy}
++                onPress={() => setConfirming(false)}
++              />
++              <Button text="Confirm refusal" isDisabled={busy} onPress={() => void refuse()} />
++            </dialog>
++          )}
++          {Array.from(
++            { length: c.panelSize },
++            (_, position) =>
++              !current.some((a) => a.position === position) && (
++                <div key={position}>
++                  <h3>Seat {position + 1} is vacant</h3>
++                  {canReplace && (
++                    <Replacement
++                      key={`${position}-${history.length}`}
++                      caseId={c.id}
++                      position={position}
++                      onChanged={onChanged}
++                      onError={handleError}
++                    />
++                  )}
++                </div>
++              ),
++          )}
++        </>
++      )}
++      {error && <p role="alert">{error}</p>}
++      <h2 className="text-lg font-semibold">Assignment history</h2>
++      <ol aria-label="Assignment history" className="space-y-3">
++        {history.map((a) => (
++          <li key={a.id}>
++            Assignment #{a.id} · Seat {a.position + 1} · {a.name} · Selected by {a.selectedByName ?? 'Unknown (legacy)'}{' '}
++            (#{a.selectedById})
++            <br />
++            Drawn {new Date(a.drawnAt).toLocaleString()} · Refusal deadline{' '}
++            {a.refusalDeadline && new Date(a.refusalDeadline).toLocaleString()}
++            {a.refusedAt ? ` · Refused ${new Date(a.refusedAt).toLocaleString()}` : ' · Current'}
++            {a.predecessorId && <span> · Replaces assignment #{a.predecessorId}</span>}
++          </li>
++        ))}
++      </ol>
++    </section>
++  );
++}
++
++function Replacement({
++  caseId,
++  position,
++  onChanged,
++  onError,
++}: Readonly<{
++  caseId: number;
++  position: number;
++  onChanged: (c: CaseDetail) => void;
++  onError: (e: unknown) => void;
++}>) {
++  const [pool, setPool] = useState<EligibleJuror[] | null>(null);
++  const [failed, setFailed] = useState(false);
++  const [attempt, setAttempt] = useState(0);
++  const [picked, setPicked] = useState('');
++  const [busy, setBusy] = useState(false);
++  useEffect(() => {
++    let live = true;
++    listEligibleJurors(caseId).then(
++      (items) => {
++        if (live) setPool(items);
++      },
++      () => {
++        if (live) setFailed(true);
++      },
++    );
++    return () => {
++      live = false;
++    };
++  }, [caseId, attempt]);
++  if (failed)
++    return (
++      <Button
++        text="Retry candidates"
++        onPress={() => {
++          setFailed(false);
++          setAttempt((n) => n + 1);
++        }}
++      />
++    );
++  if (!pool) return <p role="status">Loading eligible replacements…</p>;
++  if (!pool.length)
++    return (
++      <p>
++        No eligible replacements available. This seat will wait until an eligible juror becomes available. Reload this
++        page to check again.
++      </p>
++    );
++  return (
++    <div className="flex gap-3">
++      <select
++        aria-label={`Replacement for seat ${position + 1}`}
++        value={picked}
++        disabled={busy}
++        onChange={(e) => setPicked(e.target.value)}
++      >
++        <option value="">Choose a replacement</option>
++        {pool.map((j) => (
++          <option key={j.jurorId} value={j.jurorId}>
++            {j.name}
++          </option>
++        ))}
++      </select>
++      <Button
++        text={`Fill seat ${position + 1}`}
++        isDisabled={!picked || busy}
++        onPress={() => {
++          setBusy(true);
++          void replaceJuror(caseId, position, Number(picked))
++            .then(onChanged, onError)
++            .finally(() => setBusy(false));
++        }}
++      />
++    </div>
++  );
++}

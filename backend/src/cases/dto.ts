@@ -9,24 +9,35 @@ export const MAX_PANEL_SIZE = 11;
 const isUniqueIgnoringCase = (labels: string[]) => new Set(labels.map((l) => l.toLowerCase())).size === labels.length;
 
 /** Unknown fields are rejected (422), so a client cannot slip in status, result or evidence. */
-export const CreateCaseIn = z.strictObject({
-  title: z.string().trim().min(3).max(200),
-  description: z.string().trim().min(1).max(5000),
-  outcomes: z
-    .array(z.string().trim().min(1).max(100))
-    .min(2)
-    .max(10)
-    .refine(isUniqueIgnoringCase, 'Outcomes must be unique (case-insensitive)'),
-  voteWindowSeconds: z.number().int().min(MIN_VOTE_WINDOW_SECONDS).max(MAX_VOTE_WINDOW_SECONDS),
-  panelSize: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_PANEL_SIZE)
-    .refine((n) => n % 2 === 1, 'Panel size must be odd')
-    .default(3),
-  selectionMethod: z.enum(SELECTION_METHODS).default('random'),
-});
+export const CreateCaseIn = z
+  .strictObject({
+    refusalWindowSeconds: z.number().int().min(60).max(MAX_VOTE_WINDOW_SECONDS).optional(),
+    title: z.string().trim().min(3).max(200),
+    description: z.string().trim().min(1).max(5000),
+    outcomes: z
+      .array(z.string().trim().min(1).max(100))
+      .min(2)
+      .max(10)
+      .refine(isUniqueIgnoringCase, 'Outcomes must be unique (case-insensitive)'),
+    voteWindowSeconds: z.number().int().min(MIN_VOTE_WINDOW_SECONDS).max(MAX_VOTE_WINDOW_SECONDS),
+    panelSize: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_PANEL_SIZE)
+      .refine((n) => n % 2 === 1, 'Panel size must be odd')
+      .default(3),
+    selectionMethod: z.enum(SELECTION_METHODS).default('random'),
+  })
+  .superRefine((value, ctx) => {
+    if ((value.selectionMethod === 'manual') !== (value.refusalWindowSeconds !== undefined)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['refusalWindowSeconds'],
+        message: 'Refusal duration is required only for manual selection',
+      });
+    }
+  });
 export type CreateCaseIn = z.infer<typeof CreateCaseIn>;
 
 /** Empty for random cases; manual cases list exactly panelSize distinct user ids, in panel order. */
@@ -52,6 +63,7 @@ export interface CaseOut {
   description: string;
   outcomes: string[];
   voteWindowSeconds: number;
+  refusalWindowSeconds: number | null;
   panelSize: number;
   selectionMethod: SelectionMethod;
   status: CaseStatus;
@@ -67,6 +79,7 @@ export const toCaseOut = (c: Case): CaseOut => ({
   description: c.description,
   outcomes: c.outcomes,
   voteWindowSeconds: c.voteWindowSeconds,
+  refusalWindowSeconds: c.refusalWindowSeconds,
   panelSize: c.panelSize,
   selectionMethod: c.selectionMethod,
   status: c.status,
@@ -77,6 +90,7 @@ export const toCaseOut = (c: Case): CaseOut => ({
 
 export interface CaseDetailOut extends CaseOut {
   jurors: JurorOut[];
+  assignmentHistory?: AssignmentOut[];
 }
 
 export interface JurorOut {
@@ -109,3 +123,37 @@ export interface DrawOut {
   case: CaseDetailOut;
   jurors: JurorOut[];
 }
+
+export const ReplaceIn = z.strictObject({
+  position: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_PANEL_SIZE - 1),
+  jurorId: z.number().int().positive(),
+});
+export const RefuseIn = z.strictObject({});
+export interface AssignmentOut {
+  id: number;
+  position: number;
+  jurorId: number;
+  name: string;
+  selectedById: number | null;
+  selectedByName: string | null;
+  predecessorId: number | null;
+  drawnAt: Date;
+  refusalDeadline: Date | null;
+  refusedAt: Date | null;
+}
+export const toAssignmentOut = (j: CaseJuror): AssignmentOut => ({
+  id: j.id,
+  position: j.position,
+  jurorId: j.userId,
+  name: j.user.name,
+  selectedById: j.selectedById,
+  selectedByName: j.selectedBy?.name ?? null,
+  predecessorId: j.predecessorId,
+  drawnAt: j.drawnAt,
+  refusalDeadline: j.refusalDeadline,
+  refusedAt: j.refusedAt,
+});

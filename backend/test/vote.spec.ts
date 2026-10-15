@@ -1,4 +1,4 @@
-import { User } from '../src/entities';
+import { Case, User } from '../src/entities';
 
 import { Browser, BootedApp, bootApp } from './helpers';
 
@@ -32,9 +32,12 @@ describe('voting and resolution over HTTP', () => {
       description: 'Details',
       outcomes,
       voteWindowSeconds: WINDOW_SECONDS,
+      refusalWindowSeconds: 60,
       selectionMethod: 'manual',
     });
     expect(created.status).toBe(201);
+    // Legacy stored manual cases keep immediate voting.
+    await booted.dataSource.getRepository(Case).update(created.body.id, { refusalWindowSeconds: null });
     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
     });

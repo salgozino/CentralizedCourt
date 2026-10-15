@@ -1,0 +1,7 @@
+yarn prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+yarn eslint --max-warnings 0 backend contract-tests e2e
+cd frontend && yarn lint
+src/components/RefusalPanel.tsx:30:34: warning react(purity): Cannot call impure function during render help: `Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component re-renders
+make: *** [Makefile:14: lint] Error 1

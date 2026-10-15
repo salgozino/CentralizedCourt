@@ -1,0 +1,134 @@
+cd backend && yarn test
+FAIL test/refusal.spec.ts (12.156 s)
+  ● manual refusal lifecycle over HTTP › requires a bounded explicit manual duration: undefined
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 422
+    Received: 201
+
+      41 |
+      42 |   it.each([undefined, null, 59, 2592001, 1.5])('requires a bounded explicit manual duration: %s', async (duration) => {
+    > 43 |     expect((await owner.post('/api/cases', { ...payload, refusalWindowSeconds: duration })).status).toBe(422);
+         |                                                                                                     ^
+      44 |   });
+      45 |   it('rejects refusal configuration on random cases', async () => {
+      46 |     expect((await owner.post('/api/cases', { ...payload, selectionMethod: 'random' })).status).toBe(422);
+
+      at test/refusal.spec.ts:43:101
+
+  ● manual refusal lifecycle over HTTP › silently opens voting at the logical cutoff and gives every seat the full window
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      15 |   const create = async (extra = {}) => {
+      16 |     const res = await owner.post('/api/cases', { ...payload, ...extra });
+    > 17 |     expect(res.status).toBe(201);
+         |                        ^
+      18 |     return res.body.id as number;
+      19 |   };
+      20 |   const draw = async (id: number, panel = ids.slice(0, 3)) => {
+
+      at create (test/refusal.spec.ts:17:24)
+      at Object.<anonymous> (test/refusal.spec.ts:49:16)
+
+  ● manual refusal lifecycle over HTTP › preserves chains, removes access and excludes all prior jurors from replacements
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      15 |   const create = async (extra = {}) => {
+      16 |     const res = await owner.post('/api/cases', { ...payload, ...extra });
+    > 17 |     expect(res.status).toBe(201);
+         |                        ^
+      18 |     return res.body.id as number;
+      19 |   };
+      20 |   const draw = async (id: number, panel = ids.slice(0, 3)) => {
+
+      at create (test/refusal.spec.ts:17:24)
+      at Object.<anonymous> (test/refusal.spec.ts:61:16)
+
+  ● manual refusal lifecycle over HTTP › waits indefinitely for multiple vacancies and an exhausted pool; expired individual windows stay closed
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      15 |   const create = async (extra = {}) => {
+      16 |     const res = await owner.post('/api/cases', { ...payload, ...extra });
+    > 17 |     expect(res.status).toBe(201);
+         |                        ^
+      18 |     return res.body.id as number;
+      19 |   };
+      20 |   const draw = async (id: number, panel = ids.slice(0, 3)) => {
+
+      at create (test/refusal.spec.ts:17:24)
+      at Object.<anonymous> (test/refusal.spec.ts:92:16)
+
+  ● manual refusal lifecycle over HTTP › settles late reads without extending voting
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      15 |   const create = async (extra = {}) => {
+      16 |     const res = await owner.post('/api/cases', { ...payload, ...extra });
+    > 17 |     expect(res.status).toBe(201);
+         |                        ^
+      18 |     return res.body.id as number;
+      19 |   };
+      20 |   const draw = async (id: number, panel = ids.slice(0, 3)) => {
+
+      at create (test/refusal.spec.ts:17:24)
+      at Object.<anonymous> (test/refusal.spec.ts:101:16)
+
+  ● manual refusal lifecycle over HTTP › protects active roles, releases historical roles and retains independent owner access
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      15 |   const create = async (extra = {}) => {
+      16 |     const res = await owner.post('/api/cases', { ...payload, ...extra });
+    > 17 |     expect(res.status).toBe(201);
+         |                        ^
+      18 |     return res.body.id as number;
+      19 |   };
+      20 |   const draw = async (id: number, panel = ids.slice(0, 3)) => {
+
+      at create (test/refusal.spec.ts:17:24)
+      at Object.<anonymous> (test/refusal.spec.ts:110:16)
+
+  ● manual refusal lifecycle over HTTP › enforces authentication, CSRF, visibility, ownership and strict request bodies
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      15 |   const create = async (extra = {}) => {
+      16 |     const res = await owner.post('/api/cases', { ...payload, ...extra });
+    > 17 |     expect(res.status).toBe(201);
+         |                        ^
+      18 |     return res.body.id as number;
+      19 |   };
+      20 |   const draw = async (id: number, panel = ids.slice(0, 3)) => {
+
+      at create (test/refusal.spec.ts:17:24)
+      at Object.<anonymous> (test/refusal.spec.ts:120:16)
+
+
+Test Suites: 1 failed, 17 passed, 18 total
+Tests:       7 failed, 227 passed, 234 total
+Snapshots:   0 total
+Time:        20.118 s
+Ran all test suites.
+make: *** [Makefile:37: test-backend] Error 1

@@ -55,6 +55,7 @@ describe('case visibility over HTTP', () => {
         'description',
         'outcomes',
         'voteWindowSeconds',
+        'refusalWindowSeconds',
         'panelSize',
         'selectionMethod',
         'status',

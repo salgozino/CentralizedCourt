@@ -214,6 +214,7 @@ test('sends the chosen window, panel size and selection method', async () => {
     voteWindowSeconds: 129_600,
     panelSize: 5,
     selectionMethod: 'manual',
+    refusalWindowSeconds: 86400,
   });
   expect(await screen.findByText('1 day 12 hours (129600 seconds)')).toBeInTheDocument();
 });

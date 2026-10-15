@@ -14,6 +14,7 @@ describe('cases create/list/detail contract', () => {
     expect(created.status).toBe(201);
     expect(created.body).toEqual({
       ...payload,
+      refusalWindowSeconds: null,
       id: expect.any(Number),
       creatorId: expect.any(Number),
       panelSize: 3,
@@ -46,7 +47,7 @@ describe('cases create/list/detail contract', () => {
     const admin = await new Client().login('admin@example.com');
     const users = await admin.get('/api/admin/users');
     const ids = Object.fromEntries(users.body.map((u: { email: string; id: number }) => [u.email, u.id]));
-    const created = await owner.post('/api/cases', { ...payload, selectionMethod: 'manual' });
+    const created = await owner.post('/api/cases', { ...payload, refusalWindowSeconds: 60, selectionMethod: 'manual' });
     const id = created.body.id;
     const jurorIds = [ids['juror3@example.com'], ids['juror1@example.com'], ids['juror2@example.com']];
     const draw = await owner.post(`/api/cases/${id}/draw`, { jurorIds });

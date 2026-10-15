@@ -1,0 +1,11 @@
+# time: 2026-10-15T16:46:18-03:00
+# commit: 2f7f00f20444380fa230a471f2eb75cd228c2acf
+# dirty: 3 files
+# command: make --eval=schema-dryrun:
+	cd backend && yarn typeorm-ts-node-commonjs migration:generate -d src/data-source.ts --dryrun X schema-dryrun
+
+cd backend && yarn typeorm-ts-node-commonjs migration:generate -d src/data-source.ts --dryrun X
+No changes in database schema were found - cannot generate a migration. To create a new empty migration use "typeorm migration:create" command
+make: *** [<builtin>: schema-dryrun] Error 1
+
+# exit: 2

@@ -1,0 +1,47 @@
+# time: 2026-10-15T16:38:51-03:00
+# commit: 008d347c5736a18427e50b125d4d3e79886178ba
+# dirty: 0 files
+# command: bash evidence/capstone/scripts/contamination.sh ../CentralizedCourt-review
+
+# time: 2026-10-15T16:38:51-03:00
+# candidate (bundle): 5366bc73786c4c5710e7f112530d497783afcda4
+# reviewer HEAD: 5366bc73786c4c5710e7f112530d497783afcda4
+# diff sha256 recorded: d75fec56e6f4770d76a525b21903caf3ac19c9ddd9b2b5983ff544738a740333
+LEAK: ../CentralizedCourt-review/evidence present
+ok: odd absent
+ok: .atl absent
+ok: day5.md absent
+# reviewer worktree changes (should be only install/test artifacts):
+ D evidence/capstone/REPORT.md
+ D evidence/capstone/checks/.gitkeep
+ D evidence/capstone/checks/baseline.txt
+ D evidence/capstone/checks/day5-build.txt
+ D evidence/capstone/checks/day5-final-test.txt
+ D evidence/capstone/checks/day5-green.txt
+ D evidence/capstone/checks/day5-lint.txt
+ D evidence/capstone/checks/day5-lint2.txt
+ D evidence/capstone/checks/day5-red.txt
+ D evidence/capstone/checks/day5-test.txt
+ D evidence/capstone/checks/day5-test2.txt
+ D evidence/capstone/checks/day5-test3.txt
+ D evidence/capstone/checks/day5-test4.txt
+ D evidence/capstone/day5-specs.md
+ D evidence/capstone/day5-verification.md
+ D evidence/capstone/reviewer-pass1.md
+ D evidence/capstone/reviewer-pass2.md
+ D evidence/capstone/reviewer-prompt.md
+ D evidence/capstone/scripts/capture.sh
+ D evidence/capstone/scripts/cleanup.sh
+ D evidence/capstone/scripts/contamination.sh
+ D evidence/capstone/scripts/review-bundle.sh
+?? evidence/capstone/checks/validation.txt
+# brief and prompt commit order:
+008d347 2026-10-15T16:19:22-03:00 docs: review candidate
+5366bc7 2026-10-15T16:00:44-03:00 docs: preserve day 5 implementation check logs and provenance
+2d5b453 2026-10-15T15:58:21-03:00 docs: record day 5 implementation session and duration
+ed9a9cc 2026-10-15T15:18:40-03:00 docs: record day 5 specs and close clarification session
+bba7752 2026-10-15T14:20:18-03:00 docs(evidence): record the day 5 brief
+46bb632 2026-10-15T14:18:10-03:00 docs(evidence): record the rebased capstone base commit
+22f13dc 2026-10-15T14:18:01-03:00 docs(evidence): scaffold day 5 capstone evidence
+
+# exit: 0

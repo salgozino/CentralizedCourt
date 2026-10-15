@@ -63,6 +63,26 @@ Quota: copy the usage/cost shown by the harness when the task ends.
   - New code requests do not invalidate older unexpired codes.
   - CSRF kept on for logged-in unsafe calls; SPA reads `csrftoken` cookie.
 
+### T5 — Day 5 capstone: held-back feature
+- Date:
+- Branch: `feat/capstone-day5` (worktree `../CentralizedCourt-capstone`)
+- Starting commit: `4457a20` (master, after PR #3)
+- Evidence: `evidence/capstone/` (narrative in `REPORT.md`)
+- Acceptance criteria: (`REPORT.md` sections 1–2)
+- Model / harness / effort (implementer):
+- Reviewer (provider / model / session): `REPORT.md` section 3
+- Prompt / skills / workers:
+- Start – end: (elapsed: )
+- Intervention time: (clarifying, reviewing, inspecting, fixing)
+- Quota consumed: implementer · reviewer (`REPORT.md` section 8)
+- Checks executed: `evidence/capstone/checks/`
+- Reviewer verdict: pass 1 · pass 2
+- Rework:
+- Contamination: (summary of `REPORT.md` section 7)
+- Result: accepted / rejected / narrowed — end commit:
+- Unfinished slice:
+- Notes (decisions that needed my judgment):
+
 <!-- Copy this template for each task
 
 ### T? — <slice name>

@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 
 import { CsrfGuard } from '../auth/csrf.guard';
 import { AuthenticatedRequest, SessionAuthGuard } from '../auth/session-auth.guard';
@@ -21,6 +21,9 @@ import { ZodBodyPipe } from '../http/validation';
 
 import { CreatorGuard } from './creator.guard';
 import {
+  RefuseIn,
+  ReplaceIn,
+  toAssignmentOut,
   CaseDetailOut,
   CaseOut,
   CreateCaseIn,
@@ -49,7 +52,7 @@ export class CasesController {
   async list(@Req() req: AuthenticatedRequest): Promise<CaseOut[]> {
     const query = () => this.visibleCases(req.user).orderBy('c.createdAt', 'DESC').addOrderBy('c.id', 'DESC').getMany();
     let rows = await query();
-    const due = rows.filter((c) => c.status === 'voting').map((c) => c.id);
+    const due = rows.filter((c) => c.status === 'voting' || c.status === 'refusal').map((c) => c.id);
     if (due.length) {
       await this.voting.settle(due);
       rows = await query();
@@ -61,7 +64,7 @@ export class CasesController {
   @Get(':id')
   async detail(@Req() req: AuthenticatedRequest, @Param('id') rawId: string): Promise<CaseDetailOut> {
     const row = await this.visibleCase(req.user, rawId);
-    if (row.status === 'voting') await this.voting.settle([row.id]);
+    if (row.status === 'voting' || row.status === 'refusal') await this.voting.settle([row.id]);
     return this.detailFor(req.user, row.id);
   }
 
@@ -77,7 +80,7 @@ export class CasesController {
     @Body() body: unknown,
   ): Promise<CaseDetailOut> {
     const row = await this.visibleCase(req.user, rawId);
-    if (!(await this.jurors.existsBy({ caseId: row.id, userId: req.user.id }))) {
+    if (!(await this.jurors.existsBy({ caseId: row.id, userId: req.user.id, refusedAt: IsNull() }))) {
       throw new ForbiddenException('Only drawn jurors can vote');
     }
     const { outcomeIndex } = new ZodBodyPipe(VoteIn).transform(body ?? {});
@@ -101,11 +104,17 @@ export class CasesController {
     const row = await this.cases.findOneByOrFail({ id: caseId });
     const panel = await this.jurors.find({
       where: { caseId },
-      relations: { user: true },
+      relations: { user: true, selectedBy: true },
       order: { position: 'ASC' },
     });
     const resolved = row.status === 'resolved';
-    return { ...toCaseOut(row), jurors: panel.map((j) => toJurorOut(j, resolved || j.userId === viewer.id)) };
+    return {
+      ...toCaseOut(row),
+      jurors: panel.filter((j) => j.refusedAt === null).map((j) => toJurorOut(j, resolved || j.userId === viewer.id)),
+      ...(row.refusalWindowSeconds !== null
+        ? { assignmentHistory: panel.sort((a, b) => a.id - b.id).map(toAssignmentOut) }
+        : {}),
+    };
   }
 
   /** Assignment, not the current role flag, grants access. EXISTS avoids duplicate owned/assigned rows. */
@@ -116,7 +125,7 @@ export class CasesController {
         .subQuery()
         .select('1')
         .from(CaseJuror, 'j')
-        .where('j.caseId = c.id AND j.userId = :userId')
+        .where('j.caseId = c.id AND j.userId = :userId AND j.refusedAt IS NULL')
         .getQuery();
       query.where(`(c.creatorId = :userId OR EXISTS ${assigned})`, { userId: user.id });
     }
@@ -138,8 +147,11 @@ export class CasesController {
   /** The pool a manual panel is picked from. Same permission as the draw itself; reads need no CSRF. */
   @Get(':id/eligible-jurors')
   async eligibleJurors(@Req() req: AuthenticatedRequest, @Param('id') rawId: string): Promise<EligibleJurorOut[]> {
-    await this.drawableCase(req.user, rawId);
-    return (await this.jury.eligible()).map((u) => ({ jurorId: u.id, name: u.name }));
+    const row = await this.drawableCase(req.user, rawId);
+    const history = row.refusalWindowSeconds === null ? [] : await this.jurors.findBy({ caseId: row.id });
+    return (await this.jury.eligible())
+      .filter((u) => !history.some((j) => j.userId === u.id))
+      .map((u) => ({ jurorId: u.id, name: u.name }));
   }
 
   /**
@@ -155,16 +167,45 @@ export class CasesController {
     return row;
   }
 
+  @Post(':id/refuse')
+  @HttpCode(200)
+  async refuse(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ): Promise<{ refused: true }> {
+    const row = await this.visibleCase(req.user, rawId);
+    if (!(await this.jurors.existsBy({ caseId: row.id, userId: req.user.id, refusedAt: IsNull() }))) {
+      throw new ForbiddenException('Only current jurors can refuse');
+    }
+    new ZodBodyPipe(RefuseIn).transform(body ?? {});
+    await this.jury.refuse(row.id, req.user.id);
+    return { refused: true };
+  }
+
+  @Post(':id/replace')
+  @HttpCode(200)
+  async replace(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ): Promise<CaseDetailOut> {
+    const row = await this.drawableCase(req.user, rawId);
+    const { position, jurorId } = new ZodBodyPipe(ReplaceIn).transform(body ?? {});
+    await this.jury.replace(row.id, position, jurorId, req.user.id);
+    return this.detailFor(req.user, row.id);
+  }
+
   @Post(':id/draw')
   @HttpCode(200)
   async draw(@Req() req: AuthenticatedRequest, @Param('id') rawId: string, @Body() body: unknown): Promise<DrawOut> {
     const row = await this.drawableCase(req.user, rawId);
     // A bodiless POST leaves req.body undefined; for a random draw that is the normal call.
     const { jurorIds } = new ZodBodyPipe(DrawIn).transform(body ?? {});
-    const seated = await this.jury.seat(row.id, jurorIds);
+    const seated = await this.jury.seat(row.id, jurorIds, req.user.id);
     // Nobody has voted yet on a freshly seated panel.
     const jurors = seated.jurors.map((j) => toJurorOut(j, false));
-    return { case: { ...toCaseOut(seated.case), jurors }, jurors };
+    return { case: await this.detailFor(req.user, row.id), jurors };
   }
 }
 

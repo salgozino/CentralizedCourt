@@ -8,6 +8,7 @@ import { STATUS_LABELS, jurorCount, resultLabel } from '../cases/presentation';
 import CaseStatusBadge from './CaseStatusBadge';
 import DrawJurorsPanel from './DrawJurorsPanel';
 import VotePanel from './VotePanel';
+import RefusalPanel from './RefusalPanel';
 
 const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
 
@@ -66,6 +67,7 @@ function CaseDetail({
     ['Status', STATUS_LABELS[c.status]],
     ['Result', c.status === 'resolved' ? resultLabel(c.result) : 'Not resolved yet'],
     ['Voting window', `${formatDuration(c.voteWindowSeconds)} (${c.voteWindowSeconds} seconds)`],
+    ...(c.refusalWindowSeconds ? [['Refusal window', formatDuration(c.refusalWindowSeconds)]] : []),
     ['Panel size', jurorCount(c.panelSize)],
     ['Selection method', c.selectionMethod === 'random' ? 'Random draw' : 'Manual selection'],
     ['Created', new Date(c.createdAt).toLocaleString()],
@@ -118,7 +120,9 @@ function CaseDetail({
                 {value}
                 {label === 'Voting window' && (
                   <p className="mt-2 text-sm text-klerosUIComponentsSecondaryText">
-                    Each juror’s window starts when they are drawn. This is not a deadline date.
+                    {c.refusalWindowSeconds
+                      ? 'Voting starts for the complete panel when the last refusal window closes.'
+                      : 'Each juror’s window starts when they are drawn. This is not a deadline date.'}
                   </p>
                 )}
               </dd>
@@ -132,6 +136,7 @@ function CaseDetail({
         onDrawn={(result) => setCase(result.case)}
         onUnauthorized={onUnauthorized}
       />
+      <RefusalPanel value={c} user={user} onChanged={setCase} onUnauthorized={onUnauthorized} />
       <VotePanel value={c} user={user} onVoted={setCase} onUnauthorized={onUnauthorized} />
       <p className="text-sm text-klerosUIComponentsSecondaryText">Cases cannot be edited or deleted.</p>
     </article>

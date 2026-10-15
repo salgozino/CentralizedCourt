@@ -73,6 +73,7 @@ describe('role mutations', () => {
       description: 'Details',
       outcomes: ['A', 'B'],
       voteWindowSeconds: 3600,
+      refusalWindowSeconds: 60,
       selectionMethod: 'manual',
     });
     const panel = ['user@example.com', 'juror4@example.com', 'juror5@example.com'];
@@ -86,10 +87,10 @@ describe('role mutations', () => {
       (await admin.get(LIST_URL)).body.find((u: { email: string }) => u.email === 'user@example.com').roles,
     ).toEqual(['juror', 'user']);
 
-    // Once every juror voted the case is resolved and the role can go (this also leaves no active case behind).
+    // Historical refused assignments no longer block role removal.
     for (const email of panel) {
       const juror = await new Client().login(email);
-      expect((await juror.post(`/api/cases/${created.body.id}/vote`, { outcomeIndex: 0 })).status).toBe(200);
+      expect((await juror.post(`/api/cases/${created.body.id}/refuse`, {})).status).toBe(200);
     }
     const removed = await admin.put(rolesUrl(idOf('user@example.com')), { roles: [] });
     expect(removed.status).toBe(200);

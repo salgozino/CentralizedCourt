@@ -153,7 +153,7 @@ describe('jury draw over HTTP', () => {
 
   describe('manual assignment', () => {
     it('assigns exactly the given jurors', async () => {
-      const id = await createCase(owner, { selectionMethod: 'manual' });
+      const id = await createCase(owner, { refusalWindowSeconds: 60, selectionMethod: 'manual' });
       const jurorIds = [
         await idOf('juror4@example.com'),
         await idOf('juror1@example.com'),
@@ -161,7 +161,7 @@ describe('jury draw over HTTP', () => {
       ];
       const res = await owner.post(`/api/cases/${id}/draw`, { jurorIds });
       expect(res.status).toBe(200);
-      expect(res.body.case.status).toBe('voting');
+      expect(res.body.case.status).toBe('refusal');
       expect(res.body.jurors.map((j: JurorOut) => j.jurorId)).toEqual(jurorIds);
       for (const juror of res.body.jurors as JurorOut[])
         expect(new Date(juror.deadline).getTime() - new Date(juror.drawnAt).getTime()).toBe(120 * 1000);
@@ -171,7 +171,7 @@ describe('jury draw over HTTP', () => {
       ['a plain user', ['juror1@example.com', 'juror2@example.com', 'user@example.com']],
       ['a creator', ['juror1@example.com', 'juror2@example.com', 'creator2@example.com']],
     ])('rejects %s with 422 and keeps the case awaiting jurors', async (_label, emails) => {
-      const id = await createCase(owner, { selectionMethod: 'manual' });
+      const id = await createCase(owner, { refusalWindowSeconds: 60, selectionMethod: 'manual' });
       const jurorIds = await Promise.all(emails.map(idOf));
       const res = await owner.post(`/api/cases/${id}/draw`, { jurorIds });
       expect(res.status).toBe(422);
@@ -183,7 +183,7 @@ describe('jury draw over HTTP', () => {
       const adminUser = await users().findOneByOrFail({ email: 'admin@example.com' });
       await users().update(adminUser.id, { isJuror: true });
       try {
-        const id = await createCase(owner, { selectionMethod: 'manual' });
+        const id = await createCase(owner, { refusalWindowSeconds: 60, selectionMethod: 'manual' });
         const jurorIds = [await idOf('juror1@example.com'), await idOf('juror2@example.com'), adminUser.id];
         const res = await owner.post(`/api/cases/${id}/draw`, { jurorIds });
         expect(res.status).toBe(422);
@@ -198,7 +198,7 @@ describe('jury draw over HTTP', () => {
       ['too few', ['juror1@example.com', 'juror2@example.com']],
       ['duplicated', ['juror1@example.com', 'juror1@example.com', 'juror2@example.com']],
     ])('rejects %s jurorIds with 422', async (_label, emails) => {
-      const id = await createCase(owner, { selectionMethod: 'manual' });
+      const id = await createCase(owner, { refusalWindowSeconds: 60, selectionMethod: 'manual' });
       const body = emails ? { jurorIds: await Promise.all(emails.map(idOf)) } : {};
       const res = await owner.post(`/api/cases/${id}/draw`, body);
       expect(res.status).toBe(422);

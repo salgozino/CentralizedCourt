@@ -1,0 +1,43 @@
+# time: 2026-10-15T16:45:11-03:00
+# commit: 2f7f00f20444380fa230a471f2eb75cd228c2acf
+# dirty: 3 files
+# command: make test
+
+cd backend && yarn test
+
+Test Suites: 19 passed, 19 total
+Tests:       236 passed, 236 total
+Snapshots:   0 total
+Time:        20.477 s
+Ran all test suites.
+cd frontend && yarn test
+
+ RUN  v5.0.3 /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend
+
+
+ Test Files  13 passed (13)
+      Tests  130 passed (130)
+   Start at  16:45:34
+   Duration  12.71s (environment 40%, tests 26%, transform 20%, import 8%, setup 6%)
+
+cd contract-tests && yarn test
+
+Test Suites: 6 passed, 6 total
+Tests:       76 passed, 76 total
+Snapshots:   0 total
+Time:        26.007 s, estimated 27 s
+Ran all test suites.
+cd e2e && yarn test
+
+Running 4 tests using 1 worker
+
+(node:1840371) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/draw.spec.ts:3:5 › a creator draws a random jury and sees the jurors by name with their deadlines (3.0s)
+  ✓  2 [chromium] › tests/manual-draw.spec.ts:3:5 › a creator picks a manual panel by hand and it is seated in that order (5.6s)
+  ✓  3 [chromium] › tests/refusal.spec.ts:3:5 › a juror confirms refusal, loses access, and the creator fills the vacant seat with linked history (8.1s)
+  ✓  4 [chromium] › tests/vote.spec.ts:3:5 › drawn jurors vote in the browser and the case becomes "Resolved: Buyer" (10.0s)
+
+  4 passed (35.7s)
+
+# exit: 0

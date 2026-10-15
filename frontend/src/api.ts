@@ -2,13 +2,14 @@ export type User = { id: number; email: string; roles: string[] };
 export type ExtraRole = 'creator' | 'juror';
 
 export type SelectionMethod = 'random' | 'manual';
-export type CaseStatus = 'awaiting_jurors' | 'voting' | 'resolved';
+export type CaseStatus = 'awaiting_jurors' | 'refusal' | 'voting' | 'resolved';
 
 export type NewCase = {
   title: string;
   description: string;
   outcomes: string[];
   voteWindowSeconds: number;
+  refusalWindowSeconds?: number | null;
   panelSize: number;
   selectionMethod: SelectionMethod;
 };
@@ -36,7 +37,19 @@ export type DrawnJuror = {
 };
 
 /** Body of `GET /api/cases/:id`: the case plus its seated panel in draw order (empty before the draw). */
-export type CaseDetail = Case & { jurors: DrawnJuror[] };
+export type Assignment = {
+  id: number;
+  position: number;
+  jurorId: number;
+  name: string;
+  selectedById: number | null;
+  selectedByName: string | null;
+  predecessorId: number | null;
+  drawnAt: string;
+  refusalDeadline: string | null;
+  refusedAt: string | null;
+};
+export type CaseDetail = Case & { jurors: DrawnJuror[]; assignmentHistory?: Assignment[] };
 
 /** A juror who can be picked for a manual panel (`GET /api/cases/:id/eligible-jurors`): no email. */
 export type EligibleJuror = { jurorId: number; name: string };
@@ -146,4 +159,11 @@ export async function drawJurors(caseId: number, jurorIds?: number[]): Promise<D
 /** The pool a manual panel is picked from; only the case creator or an admin may read it. */
 export async function listEligibleJurors(caseId: number): Promise<EligibleJuror[]> {
   return (await request('GET', `/cases/${caseId}/eligible-jurors`)).json();
+}
+
+export async function refuseAssignment(caseId: number): Promise<void> {
+  await request('POST', `/cases/${caseId}/refuse`, {});
+}
+export async function replaceJuror(caseId: number, position: number, jurorId: number): Promise<CaseDetail> {
+  return (await request('POST', `/cases/${caseId}/replace`, { position, jurorId })).json();
 }

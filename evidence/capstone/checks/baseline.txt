@@ -1,0 +1,155 @@
+# time: 2026-10-15T14:30:47-03:00
+# commit: bba775268c5824311b29ea7b1616e6d46eae69f6
+# dirty: 0 files
+# command: make test
+
+cd backend && yarn test
+PASS test/voting.rules.spec.ts (8.878 s)
+PASS test/client-ip.spec.ts
+PASS test/validation.spec.ts (9.563 s)
+PASS test/config.spec.ts
+PASS test/seed.spec.ts (10.586 s)
+PASS test/migrations.spec.ts (10.871 s)
+PASS test/app.spec.ts (11.64 s)
+PASS test/eligible-jurors.spec.ts (13.344 s)
+PASS test/cases-read.spec.ts (13.642 s)
+PASS test/admin.spec.ts (13.591 s)
+PASS test/cases-jurors-read.spec.ts (14.139 s)
+PASS test/draw.spec.ts (14.882 s)
+PASS test/admin-juror-removal.spec.ts (14.717 s)
+PASS test/vote.spec.ts (17.972 s)
+PASS test/http.spec.ts (20.117 s)
+PASS test/login-code.service.spec.ts (20.805 s)
+PASS test/cases.spec.ts (21.135 s)
+
+Test Suites: 17 passed, 17 total
+Tests:       221 passed, 221 total
+Snapshots:   0 total
+Time:        23.078 s
+Ran all test suites.
+cd frontend && yarn test
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend[39m
+
+ [32m✓[39m src/cases/duration.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/cases/draft.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/api.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+[90mstderr[2m | src/components/HomePage.test.tsx[2m > [22m[2madmin retains users management, with cases removed from Home
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/components/VotePanel.test.tsx[2m > [22m[2ma panel juror picks an outcome and casts a final vote
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/components/CasesSection.test.tsx[2m > [22m[2mthe list shows the result of resolved cases, including no majority
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/components/ManualJurorPicker.test.tsx[2m > [22m[2mthe creator adds exactly panelSize jurors from the dropdown, in order, and assigns them
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/components/DrawJurorsPanel.test.tsx[2m > [22m[2mdraws a random jury, shows the pending state, then the case as voting with the jurors in order
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/cases-routing.test.tsx[2m > [22m[2mlists cases and navigates to detail and back using real paths
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[90mstderr[2m | src/App.test.tsx[2m > [22m[2mshows home when authenticated
+[22m[39m⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ [32m✓[39m src/App.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 399[2mms[22m[39m
+ [32m✓[39m src/components/HomePage.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 614[2mms[22m[39m
+   [33m[2m✓[22m[39m admin retains users management, with cases removed from Home[33m 314[2mms[22m[39m
+[90mstderr[2m | src/components/VotePanel.test.tsx[2m > [22m[2ma panel juror picks an outcome and casts a final vote
+[22m[39mWARN: A component changed from uncontrolled to controlled.
+
+ [32m✓[39m src/components/AdminUsersSection.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 899[2mms[22m[39m
+   [33m[2m✓[22m[39m lists users and toggling creator updates the row[33m 731[2mms[22m[39m
+[90mstderr[2m | src/components/VotePanel.test.tsx[2m > [22m[2mshows the error of a 422 and keeps the form
+[22m[39mWARN: A component changed from uncontrolled to controlled.
+
+[90mstderr[2m | src/components/VotePanel.test.tsx[2m > [22m[2mshows the error of a 500 and keeps the form
+[22m[39mWARN: A component changed from uncontrolled to controlled.
+
+ [32m✓[39m src/components/LoginPage.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1155[2mms[22m[39m
+   [33m[2m✓[22m[39m email, then code, then onLogin[33m 724[2mms[22m[39m
+ [32m✓[39m src/components/DrawJurorsPanel.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 1140[2mms[22m[39m
+   [33m[2m✓[22m[39m draws a random jury, shows the pending state, then the case as voting with the jurors in order[33m 735[2mms[22m[39m
+[90mstderr[2m | src/components/VotePanel.test.tsx[2m > [22m[2ma 409 for an earlier vote reloads the case and shows the stored vote
+[22m[39mWARN: A component changed from uncontrolled to controlled.
+
+[90mstderr[2m | src/components/VotePanel.test.tsx[2m > [22m[2ma 409 after the deadline reloads the case and shows it resolved
+[22m[39mWARN: A component changed from uncontrolled to controlled.
+
+[90mstderr[2m | src/components/VotePanel.test.tsx[2m > [22m[2ma 409 keeps the form when reloading the case fails
+[22m[39mWARN: A component changed from uncontrolled to controlled.
+
+[90mstderr[2m | src/components/VotePanel.test.tsx[2m > [22m[2ma 401 while voting returns to login
+[22m[39mWARN: A component changed from uncontrolled to controlled.
+
+ [32m✓[39m src/components/VotePanel.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1685[2mms[22m[39m
+   [33m[2m✓[22m[39m a panel juror picks an outcome and casts a final vote[33m 749[2mms[22m[39m
+ [32m✓[39m src/cases-routing.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 2592[2mms[22m[39m
+   [33m[2m✓[22m[39m lists cases and navigates to detail and back using real paths[33m 604[2mms[22m[39m
+   [33m[2m✓[22m[39m creation redirects to detail and returning refreshes the list[33m 1250[2mms[22m[39m
+ [32m✓[39m src/components/ManualJurorPicker.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 2994[2mms[22m[39m
+   [33m[2m✓[22m[39m the creator adds exactly panelSize jurors from the dropdown, in order, and assigns them[33m 1621[2mms[22m[39m
+   [33m[2m✓[22m[39m removing a chip takes the juror out of the order and back into the dropdown[33m 584[2mms[22m[39m
+   [33m[2m✓[22m[39m shows the backend detail when the assignment fails and keeps the picks[33m 389[2mms[22m[39m
+ [32m✓[39m src/components/CasesSection.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 9328[2mms[22m[39m
+   [33m[2m✓[22m[39m the list shows the result of resolved cases, including no majority[33m 332[2mms[22m[39m
+   [33m[2m✓[22m[39m New case opens the form and hides itself; Cancel goes back[33m 440[2mms[22m[39m
+   [33m[2m✓[22m[39m submitting an empty form shows errors, focuses the first one and does not call the API[33m 591[2mms[22m[39m
+   [33m[2m✓[22m[39m flags a duplicate outcome and an out-of-range window[33m 1315[2mms[22m[39m
+   [33m[2m✓[22m[39m outcomes can be added up to 10 and removed down to 2[33m 508[2mms[22m[39m
+   [33m[2m✓[22m[39m a valid form sends the case and shows what the backend stored[33m 627[2mms[22m[39m
+   [33m[2m✓[22m[39m sends the chosen window, panel size and selection method[33m 839[2mms[22m[39m
+   [33m[2m✓[22m[39m blocks the button while creating, so a double click creates one case[33m 595[2mms[22m[39m
+   [33m[2m✓[22m[39m a 422 is shown on the matching field and cleared by editing it[33m 594[2mms[22m[39m
+   [33m[2m✓[22m[39m a 403 explains that the permission is gone and keeps the data[33m 584[2mms[22m[39m
+   [33m[2m✓[22m[39m a 401 sends the user back to the login[33m 671[2mms[22m[39m
+   [33m[2m✓[22m[39m a network error shows a retry message and keeps the data[33m 879[2mms[22m[39m
+   [33m[2m✓[22m[39m a 500 shows a retry message and keeps the data[33m 1081[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m      Tests [22m [1m[32m126 passed[39m[22m[90m (126)[39m
+[2m   Start at [22m 14:31:13
+[2m   Duration [22m 14.79s[2m (tests 28%, environment 28%, transform 28%, import 11%, setup 5%)[22m
+
+[2m  Transform [22m [33mtransforming modules took 20.47s[39m[2m · 28% of tracked time, re-done on every run[22m
+[2m            [22m [2mpersist transforms across runs with [22m[33mfsModuleCache: true[39m
+[2m            [22m [2mlearn more: https://vitest.dev/guide/improving-performance#caching-between-reruns[22m
+
+cd contract-tests && yarn test
+PASS tests/auth.contract.test.ts (11.015 s)
+PASS tests/admin.contract.test.ts (8.848 s)
+PASS tests/cases.contract.test.ts
+PASS tests/acceptance.contract.test.ts
+PASS tests/draw.contract.test.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       75 passed, 75 total
+Snapshots:   0 total
+Time:        26.396 s
+Ran all test suites.
+cd e2e && yarn test
+
+Running 3 tests using 1 worker
+
+  ✓  1 [chromium] › tests/draw.spec.ts:3:5 › a creator draws a random jury and sees the jurors by name with their deadlines (3.0s)
+  ✓  2 [chromium] › tests/manual-draw.spec.ts:3:5 › a creator picks a manual panel by hand and it is seated in that order (4.9s)
+  ✓  3 [chromium] › tests/vote.spec.ts:3:5 › drawn jurors vote in the browser and the case becomes "Resolved: Buyer" (11.8s)
+
+  3 passed (29.0s)
+
+To open last HTML report run:
+[36m[39m
+[36m  yarn playwright show-report[39m
+[36m[39m
+
+# exit: 0
