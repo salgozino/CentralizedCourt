@@ -88,7 +88,9 @@ function DrawnJurorsList({ value: c }: Readonly<{ value: CaseDetail }>) {
             {juror.name}
             <span className="text-klerosUIComponentsSecondaryText">
               {' '}
-              · Vote by {new Date(juror.deadline).toLocaleString()} · {voteStatus(c, juror)}
+              {/* Deadlines no longer matter once the case is resolved. */}
+              {c.status !== 'resolved' && `· Vote by ${new Date(juror.deadline).toLocaleString()} `}·{' '}
+              {voteStatus(c, juror)}
             </span>
           </li>
         ))}

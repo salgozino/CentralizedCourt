@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Radio } from '@kleros/ui-components-library';
-import { ApiError, castVote, type CaseDetail, type User, type ValidationIssue } from '../api';
+import { ApiError, castVote, getCase, type CaseDetail, type User, type ValidationIssue } from '../api';
 
 const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
 const GENERIC_ERROR = 'Could not cast your vote. Please try again.';
@@ -12,7 +12,11 @@ function voteErrorMessage(error: unknown): string {
   return GENERIC_ERROR;
 }
 
-/** The signed-in juror's own vote while the case is voting; nothing for readers outside the panel. */
+/**
+ * The signed-in juror's own vote while the case is voting; nothing for readers outside the panel. A 409 means the
+ * page is stale (vote already stored, or the deadline passed and the case resolved), so the case is reloaded and the
+ * reason stays visible above the fresh state.
+ */
 export default function VotePanel({
   value: c,
   user,
@@ -31,7 +35,7 @@ export default function VotePanel({
   const [openedAt] = useState(Date.now);
 
   const seat = c.jurors.find((j) => j.jurorId === user.id);
-  if (c.status !== 'voting' || !seat) return null;
+  if (!seat || (c.status !== 'voting' && !error)) return null;
 
   const cast = async () => {
     if (choice === null) return;
@@ -40,15 +44,34 @@ export default function VotePanel({
     try {
       onVoted(await castVote(c.id, Number(choice)));
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) onUnauthorized();
-      else setError(voteErrorMessage(e));
+      if (e instanceof ApiError && e.status === 401) return onUnauthorized();
+      setError(voteErrorMessage(e));
+      if (e instanceof ApiError && e.status === 409) {
+        try {
+          onVoted(await getCase(String(c.id)));
+        } catch {
+          // Keep the current page; the error above already explains why the vote was not stored.
+        }
+      }
     } finally {
       setCasting(false);
     }
   };
 
+  const alert = error && (
+    <p role="alert" className="text-sm text-klerosUIComponentsError">
+      {error}
+    </p>
+  );
   let body;
-  if (seat.outcomeIndex !== null) body = <p>You voted: {c.outcomes[seat.outcomeIndex]}</p>;
+  if (c.status !== 'voting') body = alert;
+  else if (seat.outcomeIndex !== null)
+    body = (
+      <>
+        {alert}
+        <p>You voted: {c.outcomes[seat.outcomeIndex]}</p>
+      </>
+    );
   else if (openedAt >= new Date(seat.deadline).getTime()) body = <p>Your voting deadline has passed.</p>;
   else
     body = (
@@ -61,11 +84,7 @@ export default function VotePanel({
           onChange={(value: string) => setChoice(value)}
           options={c.outcomes.map((outcome, index) => ({ label: outcome, value: String(index) }))}
         />
-        {error && (
-          <p role="alert" className="text-sm text-klerosUIComponentsError">
-            {error}
-          </p>
-        )}
+        {alert}
         <Button
           text={casting ? 'Casting vote…' : 'Cast vote'}
           isLoading={casting}
