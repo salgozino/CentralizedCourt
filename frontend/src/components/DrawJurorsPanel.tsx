@@ -84,15 +84,21 @@ function DrawnJurorsList({ value: c }: Readonly<{ value: CaseDetail }>) {
             {juror.name}
             <span className="text-klerosUIComponentsSecondaryText">
               {' '}
-              {/* Deadlines no longer matter once the case is resolved. */}
-              {c.status === 'refusal'
-                ? `· Refuse by ${new Date(c.assignmentHistory!.find((a) => a.jurorId === juror.jurorId && !a.refusedAt)!.refusalDeadline!).toLocaleString()} `
-                : c.status !== 'resolved' && `· Vote by ${new Date(juror.deadline).toLocaleString()} `}
-              · {voteStatus(c, juror)}
+              {jurorDeadline(c, juror)}· {voteStatus(c, juror)}
             </span>
           </li>
         ))}
       </ol>
     </section>
   );
+}
+
+/** Refusal data may be absent in an incomplete response; never substitute a voting deadline. */
+function jurorDeadline(c: CaseDetail, juror: DrawnJuror): string {
+  if (c.status === 'resolved') return '';
+  if (c.status === 'refusal') {
+    const deadline = c.assignmentHistory?.find((a) => a.jurorId === juror.jurorId && !a.refusedAt)?.refusalDeadline;
+    return deadline ? `· Refuse by ${new Date(deadline).toLocaleString()} ` : '· Refusal deadline unavailable ';
+  }
+  return `· Vote by ${new Date(juror.deadline).toLocaleString()} `;
 }

@@ -1,0 +1,9 @@
+# time: 2026-10-15T16:46:00-03:00
+# commit: 2f7f00f20444380fa230a471f2eb75cd228c2acf
+# dirty: 3 files
+# command: make migrate
+
+cd backend && yarn build && yarn migrate
+Migrations done: 6 applied.
+
+# exit: 0

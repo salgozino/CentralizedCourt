@@ -1,0 +1,12 @@
+# time: 2026-10-15T16:45:30-03:00
+# commit: 2f7f00f20444380fa230a471f2eb75cd228c2acf
+# dirty: 3 files
+# command: make lint
+
+yarn prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+yarn eslint --max-warnings 0 backend contract-tests e2e
+cd frontend && yarn lint
+
+# exit: 0

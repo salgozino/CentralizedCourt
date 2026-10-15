@@ -63,3 +63,30 @@ All 19 rows matched. Test records were created only in `/tmp/day5-live/db.sqlite
 | creator fills vacancy | creator | 200 | 200 | Case detail with current panel and assignment history |
 | refuse second current juror | juror2 | 200 | 200 | refused: true |
 | admin fills vacancy | admin | 200 | 200 | Case detail with current panel and assignment history |
+
+
+## Independent-review fixes
+
+- Red commit `9e33e5c`: reproduced TypeORM schema drift and the missing-history UI crash.
+  Captured [backend red](checks/day5-review-red.txt) and [frontend red](checks/day5-review-ui-red.txt)
+  runs both exited 2 through Make.
+- Migration correction: create `selectedById` and `predecessorId` foreign keys using TypeORM's naming
+  strategy and QueryRunner. SQLite rebuilds the table inside `AddRefusal`, preserving legacy rows and
+  existing constraints. Rollback removes the named constraints together with their columns.
+- Removed the unused top-level `DrawOut.assignmentHistory` declaration; history stays in `case`.
+- Replaced chained non-null assertions in the juror panel with a safe refusal-deadline lookup and an
+  explicit unavailable label. Regression cases separately cover missing and empty history.
+- [Full tests](checks/day5-review-green.txt): exit 0; 236 backend, 130 frontend, 76 contract, 4 browser.
+- [Focused frontend recheck](checks/day5-review-ui-green.txt): exit 0; all 130 tests passed after correcting
+  the parameterized fixtures to distinguish missing history from an empty array. An intermediate fixture
+  destructuring error is preserved in [its log](checks/day5-review-ui-fixture-error.txt), exit 2.
+- [Lint](checks/day5-review-lint.txt): exit 0, zero warnings.
+- [Fresh migration](checks/day5-review-migrate.txt): exit 0, six migrations applied to a temporary DB.
+- [Reviewer reproduction](checks/day5-review-schema-dryrun.txt): no schema changes found by
+  `migration:generate --dryrun X`. TypeORM exits 1 for this expected no-change result; Make/capture exit 2.
+  The automated schema-builder regression also verifies empty up/down query lists and passes normally.
+- These new logs were produced with `scripts/capture.sh` and include commit/working-tree provenance.
+- The correction revises the unmerged `AddRefusal` migration. A database where its original version already
+  ran will not rerun it automatically; the fresh-database and pre-feature upgrade checks use the corrected version.
+- Rollback boundary: `1792000000000-AddRefusal.ts`, the unused DTO declaration and juror deadline presentation,
+  with their regression tests. No endpoint permissions or refusal/voting business rules changed.

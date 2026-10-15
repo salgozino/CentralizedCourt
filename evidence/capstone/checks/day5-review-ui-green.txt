@@ -1,0 +1,18 @@
+# time: 2026-10-15T16:47:38-03:00
+# commit: 2f7f00f20444380fa230a471f2eb75cd228c2acf
+# dirty: 4 files
+# command: make --eval=test-frontend:
+	cd frontend && yarn test test-frontend
+
+cd frontend && yarn test
+
+ RUN  v5.0.3 /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend
+
+
+ Test Files  13 passed (13)
+      Tests  130 passed (130)
+   Start at  16:47:39
+   Duration  13.89s (environment 38%, tests 26%, transform 22%, import 9%, setup 5%)
+
+
+# exit: 0

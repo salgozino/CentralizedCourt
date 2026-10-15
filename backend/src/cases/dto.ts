@@ -122,7 +122,6 @@ export interface EligibleJurorOut {
 export interface DrawOut {
   case: CaseDetailOut;
   jurors: JurorOut[];
-  assignmentHistory?: AssignmentOut[];
 }
 
 export const ReplaceIn = z.strictObject({

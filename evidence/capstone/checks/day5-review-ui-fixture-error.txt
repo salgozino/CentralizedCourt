@@ -1,0 +1,112 @@
+# time: 2026-10-15T16:47:13-03:00
+# commit: 2f7f00f20444380fa230a471f2eb75cd228c2acf
+# dirty: 4 files
+# command: make --eval=test-frontend:
+	cd frontend && yarn test test-frontend
+
+cd frontend && yarn test
+
+ RUN  v5.0.3 /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend
+
+TypeError: c.assignmentHistory?.find is not a function
+    at jurorDeadline (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:100:43)
+    at /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:87:16
+    at Array.map (<anonymous>)
+    at DrawnJurorsList (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:82:19)
+    at renderWithHooks (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:20103:13)
+    at beginWork (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:4164:14)
+    at HTMLUnknownElement.callTheUserObjectsOperation (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/jsdom/lib/generated/idl/EventListener.js:26:30)
+    at innerInvokeEventListeners (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:378:16)
+TypeError: c.assignmentHistory?.find is not a function
+    at jurorDeadline (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:100:43)
+    at /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:87:16
+    at Array.map (<anonymous>)
+    at DrawnJurorsList (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:82:19)
+    at renderWithHooks (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:20103:13)
+    at beginWork (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:4164:14)
+    at HTMLUnknownElement.callTheUserObjectsOperation (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/jsdom/lib/generated/idl/EventListener.js:26:30)
+    at innerInvokeEventListeners (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:378:16)
+TypeError: c.assignmentHistory?.find is not a function
+    at jurorDeadline (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:100:43)
+    at /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:87:16
+    at Array.map (<anonymous>)
+    at DrawnJurorsList (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:82:19)
+    at renderWithHooks (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:20103:13)
+    at beginWork (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:4164:14)
+    at HTMLUnknownElement.callTheUserObjectsOperation (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/jsdom/lib/generated/idl/EventListener.js:26:30)
+    at innerInvokeEventListeners (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:378:16)
+TypeError: c.assignmentHistory?.find is not a function
+    at jurorDeadline (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:100:43)
+    at /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:87:16
+    at Array.map (<anonymous>)
+    at DrawnJurorsList (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:82:19)
+    at renderWithHooks (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:20103:13)
+    at beginWork (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/react-dom/cjs/react-dom.development.js:4164:14)
+    at HTMLUnknownElement.callTheUserObjectsOperation (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/jsdom/lib/generated/idl/EventListener.js:26:30)
+    at innerInvokeEventListeners (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/node_modules/jsdom/lib/jsdom/living/events/EventTarget-impl.js:378:16)
+stderr | src/components/DrawJurorsPanel.test.tsx > renders refusal jurors safely when history is missing or empty ({})
+The above error occurred in the <DrawnJurorsList> component:
+
+    at DrawnJurorsList (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:124:35)
+    at DrawJurorsPanel (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:16:35)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+stderr | src/components/DrawJurorsPanel.test.tsx > renders refusal jurors safely when history is missing or empty ({"assignmentHistory":[]})
+The above error occurred in the <DrawnJurorsList> component:
+
+    at DrawnJurorsList (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:124:35)
+    at DrawJurorsPanel (/home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend/src/components/DrawJurorsPanel.tsx:16:35)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+ ❯ src/components/DrawJurorsPanel.test.tsx (11 tests | 2 failed) 863ms
+   × renders refusal jurors safely when history is missing or empty ({}) 11ms
+   × renders refusal jurors safely when history is missing or empty ({"assignmentHistory":[]}) 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/DrawJurorsPanel.test.tsx > renders refusal jurors safely when history is missing or empty ({})
+ FAIL  src/components/DrawJurorsPanel.test.tsx > renders refusal jurors safely when history is missing or empty ({"assignmentHistory":[]})
+TypeError: c.assignmentHistory?.find is not a function
+ ❯ jurorDeadline src/components/DrawJurorsPanel.tsx:100:43
+     98|   if (c.status === 'resolved') return '';
+     99|   if (c.status === 'refusal') {
+    100|     const deadline = c.assignmentHistory?.find((a) => a.jurorId === ju…
+       |                                           ^
+    101|     return deadline ? `· Refuse by ${new Date(deadline).toLocaleString…
+    102|   }
+ ❯ src/components/DrawJurorsPanel.tsx:87:16
+ ❯ DrawnJurorsList src/components/DrawJurorsPanel.tsx:82:19
+ ❯ renderWithHooks node_modules/react-dom/cjs/react-dom.development.js:15486:18
+ ❯ mountIndeterminateComponent node_modules/react-dom/cjs/react-dom.development.js:20103:13
+ ❯ beginWork node_modules/react-dom/cjs/react-dom.development.js:21626:16
+ ❯ beginWork$1 node_modules/react-dom/cjs/react-dom.development.js:27465:14
+ ❯ performUnitOfWork node_modules/react-dom/cjs/react-dom.development.js:26599:12
+ ❯ workLoopSync node_modules/react-dom/cjs/react-dom.development.js:26505:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 12 passed (13)
+      Tests  2 failed | 128 passed (130)
+   Start at  16:47:14
+   Duration  13.28s (environment 35%, transform 25%, tests 24%, import 9%, setup 6%)
+
+  Transform  transforming modules took 17.87s · 25% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+make: *** [<builtin>: test-frontend] Error 1
+
+# exit: 2

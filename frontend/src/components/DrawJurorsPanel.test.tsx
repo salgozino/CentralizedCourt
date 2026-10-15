@@ -134,9 +134,9 @@ test('a case awaiting jurors shows no drawn jurors list', async () => {
   expect(screen.queryByRole('list', { name: 'Drawn jurors' })).not.toBeInTheDocument();
 });
 
-test.each([undefined, []])(
-  'renders refusal jurors safely when history is missing or empty (%j)',
-  (assignmentHistory) => {
+test.each([{ assignmentHistory: undefined }, { assignmentHistory: [] }])(
+  'renders refusal jurors safely when history is missing or empty ($assignmentHistory)',
+  ({ assignmentHistory }) => {
     render(
       <DrawJurorsPanel
         value={{ ...votingCase, status: 'refusal', assignmentHistory }}
