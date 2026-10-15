@@ -125,17 +125,18 @@ be able to resume from here.
    decisions, and the stretch goals in `EXPERIMENT.md`.
 2. No browser e2e checks the per-role home screen yet (covered by mocked `HomePage.test.tsx` and manual checks).
 3. Manual juror picker UI remains pending (not an acceptance criterion).
-4. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
-5. The vote form reads the clock once per page load; a deadline crossed while the page is open is rejected by the
+4. The vote form reads the clock once per page load; a deadline crossed while the page is open is rejected by the
    backend (409), and the UI then reloads the case and shows it resolved with the reason (`364133f`).
-6. Visual pass (2026-10-15, Playwright screenshots): low contrast in two Kleros library styles, the disabled
+5. Visual pass (2026-10-15, Playwright screenshots): low contrast in two Kleros library styles, the disabled
    "Cast vote" button and unchecked radio circles. Fixing it means overriding library styles; not done.
-7. The frontend "Your voting deadline has passed." message is a fallback that is practically unreachable today: every
+6. The frontend "Your voting deadline has passed." message is a fallback that is practically unreachable today: every
    juror of a panel gets the same deadline, so once it passes the case resolves and the vote form disappears.
 
 ## Open questions / decisions pending
 
-- Product decision: the juror role must not be removable. The current admin roles endpoint still permits removal; enforcing this is explicitly out of scope for the juror-read work and must be addressed later.
+- Product decision (revised 2026-10-15): the juror role can be removed only while the user has no active cases (not on
+  the panel of any case in `voting`, even after voting). Defined in `slice1.md` (Roles and the roles endpoint); enforced
+  on branch `feat/juror-role-removal`.
 - Juror reads: owner (WIPO), admin and assigned jurors can read cases. Lists omit panels; detail and draw's nested case expose the full panel (`jurorId`, `name`, `drawnAt`, `deadline`). Draw juror output must not expose email. Assigned access is based on assignment, not current role.
 
 - Rule: an admin can do everything a creator can (and every admin action), without needing the
