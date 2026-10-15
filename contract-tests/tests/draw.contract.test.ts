@@ -55,6 +55,25 @@ describe('jury draw contract', () => {
     expect((await owner.post(`/api/cases/${big.body.id}/draw`)).status).toBe(409);
   });
 
+  it('lists eligible jurors (id and name, no email) only to whoever can draw', async () => {
+    const owner = await new Client().login('creator1@example.com');
+    const created = await owner.post('/api/cases', { ...payload, selectionMethod: 'manual' });
+    const path = `/api/cases/${created.body.id}/eligible-jurors`;
+    const listed = await owner.get(path);
+    expect(listed.status).toBe(200);
+    for (const juror of listed.body) {
+      expect(juror).toEqual({ jurorId: expect.any(Number), name: expect.stringMatching(/^Juror \d$/) });
+    }
+    expect(listed.body.length).toBeGreaterThanOrEqual(3);
+    expect((await new Client().get(path)).status).toBe(401);
+    expect((await (await new Client().login('creator2@example.com')).get(path)).status).toBe(403);
+    expect((await owner.get('/api/cases/999999/eligible-jurors')).status).toBe(404);
+
+    const jurorIds = listed.body.slice(0, 3).map((j: { jurorId: number }) => j.jurorId);
+    const draw = await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds });
+    expect(draw.status).toBe(200);
+  });
+
   it('manual assignment only accepts users with the juror role', async () => {
     const ids = await userIds();
     const owner = await new Client().login('creator1@example.com');
