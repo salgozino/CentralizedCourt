@@ -85,12 +85,14 @@ export class JuryService {
     return panel;
   }
 
+  /** Every user who can be seated (see `isEligible`), ordered by id: the pool of a random draw and of a manual pick. */
+  eligible(manager: EntityManager = this.dataSource.manager): Promise<User[]> {
+    return manager.find(User, { where: { isJuror: true, isAdmin: false, isActive: true }, order: { id: 'ASC' } });
+  }
+
   /** Partial Fisher-Yates over the pool ordered by id, so a seeded RNG gives the same panel. */
   private async drawn(manager: EntityManager, panelSize: number): Promise<User[]> {
-    const pool = await manager.find(User, {
-      where: { isJuror: true, isAdmin: false, isActive: true },
-      order: { id: 'ASC' },
-    });
+    const pool = await this.eligible(manager);
     if (pool.length < panelSize) {
       throw new ConflictException(`Not enough eligible jurors: ${pool.length} available, ${panelSize} required`);
     }
