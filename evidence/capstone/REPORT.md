@@ -177,19 +177,23 @@ Process deviations:
 
 ## 6. Human inspection
 
-- Inspected by / when / commit: human (repository owner) / started 2026-10-15T17:05-03:00 / `223586ca84a7311dcfcce8cd4b5027144f3eb45f`
+- Inspected by / when / commit: human (repository owner) / 2026-10-15T17:05-03:00 – 17:38-03:00 (33m) / `223586ca84a7311dcfcce8cd4b5027144f3eb45f`
 - Diff under inspection: `git diff master...223586c -- . ':(exclude)evidence'`, 40 files, +1030/−68
   (source +525/−51, tests +424/−17, migration +42/−0, docs +39/−0).
 
 | Check | How | Result |
 |-------|-----|--------|
-| Diff read | | |
-| Browser walk-through | | |
-| Acceptance rows | | |
+| Diff read | Read the code diff above | No defects found |
+| Browser walk-through | Exercised the refusal and replacement flow in the UI | Works; button placement on the "refusal to arbitrate" screen could be improved (follow-up) |
+| Acceptance rows | Not checked separately in `ACCEPTANCE.md` | Not done |
 
-- Verdict: accepted / rejected
-- Accepted scope:
-- Unfinished slice (narrowed scope, what is missing, why):
+- Verdict: **accepted**
+- Accepted scope: the specified feature (section 2): configurable refusal period for new manual-selection cases,
+  final refusal recorded per assignment, manual one-at-a-time replacement by creator/admin, shared voting start, and
+  the retained assignment history with predecessor links, including the review fixes in `c86e3de`.
+- Follow-up: improve the placement of the buttons on the "refusal to arbitrate" screen (UX only, no behavior change).
+- Unfinished slice (narrowed scope, what is missing, why): none beyond the scope narrowed in clarification (section 2,
+  out of scope).
 
 ## 7. Contamination
 
