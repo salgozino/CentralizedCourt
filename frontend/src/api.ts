@@ -22,8 +22,18 @@ export type Case = NewCase & {
   updatedAt: string;
 };
 
-/** A seated juror as the backend returns it: `jurorId` is the user's id; no email is exposed. */
-export type DrawnJuror = { jurorId: number; name: string; drawnAt: string; deadline: string };
+/**
+ * A seated juror as the backend returns it: `jurorId` is the user's id; no email is exposed. `outcomeIndex` is the
+ * juror's choice: everyone sees it once the case is resolved, before that only the juror sees their own.
+ */
+export type DrawnJuror = {
+  jurorId: number;
+  name: string;
+  drawnAt: string;
+  deadline: string;
+  hasVoted: boolean;
+  outcomeIndex: number | null;
+};
 
 /** Body of `GET /api/cases/:id`: the case plus its seated panel in draw order (empty before the draw). */
 export type CaseDetail = Case & { jurors: DrawnJuror[] };
@@ -118,6 +128,11 @@ export async function getCase(id: string): Promise<CaseDetail> {
 
 export async function createCase(input: NewCase): Promise<Case> {
   return (await request('POST', '/cases', input)).json();
+}
+
+/** A final vote by the signed-in panel juror; answers the updated case (possibly resolved). */
+export async function castVote(caseId: number, outcomeIndex: number): Promise<CaseDetail> {
+  return (await request('POST', `/cases/${caseId}/vote`, { outcomeIndex })).json();
 }
 
 /** Random draw only (manual picker deferred). Errors surface as `ApiError`. */

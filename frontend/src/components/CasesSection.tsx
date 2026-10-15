@@ -1,6 +1,7 @@
 import { Button } from '@kleros/ui-components-library';
 import { Link, useNavigate } from 'react-router-dom';
 import { listCases } from '../api';
+import { resultLabel } from '../cases/presentation';
 import { useCaseRead } from '../cases/useCaseRead';
 import CaseStatusBadge from './CaseStatusBadge';
 import CreateCaseForm from './CreateCaseForm';
@@ -65,7 +66,7 @@ function CaseList({ canCreate, onUnauthorized }: Props) {
                   <p className="mt-2 text-sm text-klerosUIComponentsSecondaryText">
                     #{c.id} · Created {new Date(c.createdAt).toLocaleString()}
                   </p>
-                  {c.result !== null && <p className="mt-2">Result: {c.result}</p>}
+                  {c.status === 'resolved' && <p className="mt-2">Result: {resultLabel(c.result)}</p>}
                 </Link>
               </li>
             ))}
