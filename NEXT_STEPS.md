@@ -120,8 +120,7 @@ be able to resume from here.
 
 ## Next
 
-1. Slice 4: manual browser check by the user, then merge `feat/vote-resolve` into master. Run `make migrate` on the
-   local DB first.
+1. Slice 4: manual browser check done by the user (2026-10-15). Next: merge `feat/vote-resolve` into master.
 2. All acceptance rows are ✅ except the slice 1 manual browser check (🟡).
 3. Manual juror picker UI remains pending (not an acceptance criterion).
 4. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
