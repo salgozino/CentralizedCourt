@@ -42,6 +42,21 @@ export class VotingService {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
+  /**
+   * Whether the user sits on the panel of a case that is still voting (even after voting there). Due cases are
+   * settled first, so an expired case does not count as active.
+   */
+  async isOnActiveCase(userId: number): Promise<boolean> {
+    const openSeats = () =>
+      this.dataSource
+        .getRepository(CaseJuror)
+        .find({ where: { userId, case: { status: 'voting' } }, relations: { case: true } });
+    const seats = await openSeats();
+    if (!seats.length) return false;
+    await this.settle(seats.map((s) => s.caseId));
+    return (await openSeats()).length > 0;
+  }
+
   /** Settles the given cases that are due; cases not in `voting` are left untouched. */
   async settle(caseIds: number[]): Promise<void> {
     if (!caseIds.length) return;

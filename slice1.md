@@ -11,6 +11,10 @@ for commands. Cases, juror draws and voting are out of scope for this slice.
   (e.g. `creator` + `juror`).
 - Only an `admin` can assign or remove `creator` and `juror` roles. The `admin` role
   is only granted by the seed in this slice (not assignable through the API).
+- The `juror` role can only be removed while the user has no active cases: they are not on the panel of any case in
+  `voting` (even if they already voted there). Cases whose deadlines have all passed are resolved first, so they do
+  not block. Otherwise the request answers `409` and no role changes. Adding roles and removing `creator` are not
+  restricted. (Added after slice 4, when voting exists.)
 - There is no signup. Only users that already exist in the database can log in.
 
 ## Seed
@@ -53,7 +57,7 @@ All endpoints under `/api/`. Authentication is the server-side session cookie.
 | POST   | `/api/auth/logout`           | —                       | `200`, session cleared                        | —                                                          |
 | GET    | `/api/me`                    | —                       | `200` `{"id": int, "email": str, "roles": [str]}` | `401` not logged in                                    |
 | GET    | `/api/admin/users`           | —                       | `200` `[{"id": int, "email": str, "roles": [str]}]` | `401` not logged in, `403` not admin                 |
-| PUT    | `/api/admin/users/{id}/roles`| `{"roles": [str]}`      | `200` updated user (same shape as list item)   | `401`, `403` not admin, `404` unknown user, `422` invalid role or tries to set/remove `admin` |
+| PUT    | `/api/admin/users/{id}/roles`| `{"roles": [str]}`      | `200` updated user (same shape as list item)   | `401`, `403` not admin, `404` unknown user, `422` invalid role or tries to set/remove `admin`, `409` `Cannot remove the juror role while the user is on an active case` |
 
 - `roles` is always a sorted list and always includes `user`.
 - In `PUT .../roles`, the body lists the extra roles to hold (subset of
