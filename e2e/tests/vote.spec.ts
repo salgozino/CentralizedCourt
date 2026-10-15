@@ -25,7 +25,9 @@ test('drawn jurors vote in the browser and the case becomes "Resolved: Buyer"', 
     await login(juror, `${name.replace(' ', '').toLowerCase()}@example.com`);
     await juror.goto(caseUrl);
     const vote = juror.getByRole('region', { name: 'Your vote' });
-    await vote.getByRole('radio', { name: choices[i] }).check({ force: true });
+    // Kleros' radio input is visually hidden: pick the outcome by its visible label, as a user does.
+    await vote.getByText(choices[i], { exact: true }).click();
+    await expect(vote.getByRole('radio', { name: choices[i] })).toBeChecked();
     await vote.getByRole('button', { name: 'Cast vote' }).click();
     if (i < names.length - 1) {
       await expect(vote).toContainText(`You voted: ${choices[i]}`);
