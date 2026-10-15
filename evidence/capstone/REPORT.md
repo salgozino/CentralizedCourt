@@ -61,13 +61,14 @@ approval; refusal withdrawal/override; vacancy cancellation/timeouts; a separate
 
 ## 3. Sessions
 
-| Role | Provider / model / harness | Session ID | Worktree | Start | End |
-|------|----------------------------|------------|----------|-------|-----|
-| Specs | OpenAI / gpt-6.1-sol / Codex | 01a140a9-eb16-7ca3-81fe-0c0d5c655b09 | /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone | 2026-10-15T14:44:00-03:00 | 2026-10-15T15:18:25-03:00 |
+| Role | Provider / model / harness | Session ID | Worktree | Start | End | Duration |
+|------|----------------------------|------------|----------|-------|-----|----------|
+| Specs | OpenAI / gpt-6.1-sol / Codex | 01a140a9-eb16-7ca3-81fe-0c0d5c655b09 | /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone | 2026-10-15T14:44:00-03:00 | 2026-10-15T15:18:25-03:00 | 34m 25s |
+| Implementation | OpenAI / gpt-6.1-sol / Codex | 01a140c9-d996-7311-84bf-6ee552d5c61f | /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone | 2026-10-15T15:18:52-03:00 | 2026-10-15T15:32:08-03:00 | 13m 16s |
 
 Branch: `feat/capstone-day5`. Session metadata verifies the model, session ID, worktree and start time.
-The specification session is closed. Implementation will take place in a new session. No implementation
-or reviewer session has taken place, so the scaffolded session entries were removed.
+Implementation duration runs from session creation to its initial completion message, rounded to the nearest
+second; later branch correction and report edits are excluded. No reviewer session has taken place.
 
 ## 4. Implementation and checks
 
