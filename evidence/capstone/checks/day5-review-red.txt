@@ -1,0 +1,61 @@
+# time: 2026-10-15T16:44:10-03:00
+# commit: 008d347c5736a18427e50b125d4d3e79886178ba
+# dirty: 3 files
+# command: make test
+
+cd backend && yarn test
+FAIL test/refusal-migration.spec.ts (10.856 s)
+  ● leaves no schema diff for the next generated migration
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 26
+
+    - Array []
+    + Array [
+    +   "DROP INDEX \"assignment_successor\"",
+    +   "DROP INDEX \"current_case_seat\"",
+    +   "DROP INDEX \"IDX_8fdc4225faee16a947a22469e6\"",
+    +   "DROP INDEX \"IDX_2ebefde32f44a05779ac6cc85b\"",
+    +   "CREATE TABLE \"temporary_case_jurors\" (\"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"caseId\" integer NOT NULL, \"userId\" integer NOT NULL, \"position\" smallint NOT NULL, \"drawnAt\" datetime NOT NULL, \"deadline\" datetime NOT NULL, \"outcomeIndex\" smallint, \"votedAt\" datetime, \"selectedById\" integer, \"predecessorId\" integer, \"refusalDeadline\" datetime, \"refusedAt\" datetime, CONSTRAINT \"FK_2ebefde32f44a05779ac6cc85b3\" FOREIGN KEY (\"userId\") REFERENCES \"users\" (\"id\") ON DELETE RESTRICT ON UPDATE NO ACTION, CONSTRAINT \"FK_cb9d7d0d1ea8cba35258159dc6d\" FOREIGN KEY (\"caseId\") REFERENCES \"cases\" (\"id\") ON DELETE CASCADE ON UPDATE NO ACTION)",
+    +   "INSERT INTO \"temporary_case_jurors\"(\"id\", \"caseId\", \"userId\", \"position\", \"drawnAt\", \"deadline\", \"outcomeIndex\", \"votedAt\", \"selectedById\", \"predecessorId\", \"refusalDeadline\", \"refusedAt\") SELECT \"id\", \"caseId\", \"userId\", \"position\", \"drawnAt\", \"deadline\", \"outcomeIndex\", \"votedAt\", \"selectedById\", \"predecessorId\", \"refusalDeadline\", \"refusedAt\" FROM \"case_jurors\"",
+    +   "DROP TABLE \"case_jurors\"",
+    +   "ALTER TABLE \"temporary_case_jurors\" RENAME TO \"case_jurors\"",
+    +   "CREATE UNIQUE INDEX \"assignment_successor\" ON \"case_jurors\" (\"predecessorId\") WHERE predecessorId IS NOT NULL",
+    +   "CREATE UNIQUE INDEX \"current_case_seat\" ON \"case_jurors\" (\"caseId\", \"position\") WHERE refusedAt IS NULL",
+    +   "CREATE UNIQUE INDEX \"IDX_8fdc4225faee16a947a22469e6\" ON \"case_jurors\" (\"caseId\", \"userId\") ",
+    +   "CREATE INDEX \"IDX_2ebefde32f44a05779ac6cc85b\" ON \"case_jurors\" (\"userId\") ",
+    +   "DROP INDEX \"assignment_successor\"",
+    +   "DROP INDEX \"current_case_seat\"",
+    +   "DROP INDEX \"IDX_8fdc4225faee16a947a22469e6\"",
+    +   "DROP INDEX \"IDX_2ebefde32f44a05779ac6cc85b\"",
+    +   "CREATE TABLE \"temporary_case_jurors\" (\"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"caseId\" integer NOT NULL, \"userId\" integer NOT NULL, \"position\" smallint NOT NULL, \"drawnAt\" datetime NOT NULL, \"deadline\" datetime NOT NULL, \"outcomeIndex\" smallint, \"votedAt\" datetime, \"selectedById\" integer, \"predecessorId\" integer, \"refusalDeadline\" datetime, \"refusedAt\" datetime, CONSTRAINT \"FK_2ebefde32f44a05779ac6cc85b3\" FOREIGN KEY (\"userId\") REFERENCES \"users\" (\"id\") ON DELETE RESTRICT ON UPDATE NO ACTION, CONSTRAINT \"FK_cb9d7d0d1ea8cba35258159dc6d\" FOREIGN KEY (\"caseId\") REFERENCES \"cases\" (\"id\") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT \"FK_aa87fbab816a516220f2dfff87e\" FOREIGN KEY (\"selectedById\") REFERENCES \"users\" (\"id\") ON DELETE RESTRICT ON UPDATE NO ACTION, CONSTRAINT \"FK_0c33dda85365ad7ede0c0680fb6\" FOREIGN KEY (\"predecessorId\") REFERENCES \"case_jurors\" (\"id\") ON DELETE RESTRICT ON UPDATE NO ACTION)",
+    +   "INSERT INTO \"temporary_case_jurors\"(\"id\", \"caseId\", \"userId\", \"position\", \"drawnAt\", \"deadline\", \"outcomeIndex\", \"votedAt\", \"selectedById\", \"predecessorId\", \"refusalDeadline\", \"refusedAt\") SELECT \"id\", \"caseId\", \"userId\", \"position\", \"drawnAt\", \"deadline\", \"outcomeIndex\", \"votedAt\", \"selectedById\", \"predecessorId\", \"refusalDeadline\", \"refusedAt\" FROM \"case_jurors\"",
+    +   "DROP TABLE \"case_jurors\"",
+    +   "ALTER TABLE \"temporary_case_jurors\" RENAME TO \"case_jurors\"",
+    +   "CREATE UNIQUE INDEX \"assignment_successor\" ON \"case_jurors\" (\"predecessorId\") WHERE predecessorId IS NOT NULL",
+    +   "CREATE UNIQUE INDEX \"current_case_seat\" ON \"case_jurors\" (\"caseId\", \"position\") WHERE refusedAt IS NULL",
+    +   "CREATE UNIQUE INDEX \"IDX_8fdc4225faee16a947a22469e6\" ON \"case_jurors\" (\"caseId\", \"userId\") ",
+    +   "CREATE INDEX \"IDX_2ebefde32f44a05779ac6cc85b\" ON \"case_jurors\" (\"userId\") ",
+    + ]
+
+      67 |     await ds.runMigrations();
+      68 |     const diff = await ds.driver.createSchemaBuilder().log();
+    > 69 |     expect(diff.upQueries.map((q) => q.query)).toEqual([]);
+         |                                                ^
+      70 |     expect(diff.downQueries.map((q) => q.query)).toEqual([]);
+      71 |   } finally {
+      72 |     await ds.destroy();
+
+      at Object.<anonymous> (test/refusal-migration.spec.ts:69:48)
+
+
+Test Suites: 1 failed, 18 passed, 19 total
+Tests:       1 failed, 235 passed, 236 total
+Snapshots:   0 total
+Time:        21.352 s, estimated 22 s
+Ran all test suites.
+make: *** [Makefile:23: test] Error 1
+
+# exit: 2

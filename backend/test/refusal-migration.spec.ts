@@ -58,3 +58,18 @@ it('upgrades populated legacy cases without opting them into refusal or changing
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+it('leaves no schema diff for the next generated migration', async () => {
+  const { dir, dbPath } = tempDbPath();
+  const ds = new DataSource(dataSourceOptions(dbPath));
+  await ds.initialize();
+  try {
+    await ds.runMigrations();
+    const diff = await ds.driver.createSchemaBuilder().log();
+    expect(diff.upQueries.map((q) => q.query)).toEqual([]);
+    expect(diff.downQueries.map((q) => q.query)).toEqual([]);
+  } finally {
+    await ds.destroy();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
