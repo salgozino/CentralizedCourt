@@ -39,6 +39,12 @@ export const DrawIn = z.strictObject({
 });
 export type DrawIn = z.infer<typeof DrawIn>;
 
+/** A final vote: the index of one of the case outcomes (checked against the case by the controller). */
+export const VoteIn = z.strictObject({
+  outcomeIndex: z.number().int().min(0),
+});
+export type VoteIn = z.infer<typeof VoteIn>;
+
 export interface CaseOut {
   id: number;
   creatorId: number;
@@ -78,14 +84,19 @@ export interface JurorOut {
   name: string;
   drawnAt: Date;
   deadline: Date;
+  hasVoted: boolean;
+  /** The juror's choice: public once the case is resolved; before that only the juror sees their own. */
+  outcomeIndex: number | null;
 }
 
-/** Expects `user` to be loaded. */
-export const toJurorOut = (j: CaseJuror): JurorOut => ({
+/** Expects `user` to be loaded. `revealVote` decides whether the chosen outcome is shown to this viewer. */
+export const toJurorOut = (j: CaseJuror, revealVote: boolean): JurorOut => ({
   jurorId: j.userId,
   name: j.user.name,
   drawnAt: j.drawnAt,
   deadline: j.deadline,
+  hasVoted: j.outcomeIndex !== null,
+  outcomeIndex: revealVote ? j.outcomeIndex : null,
 });
 
 export interface DrawOut {

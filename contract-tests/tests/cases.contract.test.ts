@@ -57,6 +57,8 @@ describe('cases create/list/detail contract', () => {
         name: ['Juror 3', 'Juror 1', 'Juror 2'][i],
         drawnAt: expect.any(String),
         deadline: expect.any(String),
+        hasVoted: false,
+        outcomeIndex: null,
       })),
     );
     for (const browser of [owner, admin, await new Client().login('juror1@example.com')]) {

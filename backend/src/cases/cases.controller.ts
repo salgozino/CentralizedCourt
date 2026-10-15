@@ -16,11 +16,13 @@ import { Repository } from 'typeorm';
 import { CsrfGuard } from '../auth/csrf.guard';
 import { AuthenticatedRequest, SessionAuthGuard } from '../auth/session-auth.guard';
 import { Case, CaseJuror, User } from '../entities';
+import { UnprocessableException } from '../http/errors';
 import { ZodBodyPipe } from '../http/validation';
 
 import { CreatorGuard } from './creator.guard';
-import { CaseDetailOut, CaseOut, CreateCaseIn, DrawIn, DrawOut, toCaseOut, toJurorOut } from './dto';
+import { CaseDetailOut, CaseOut, CreateCaseIn, DrawIn, DrawOut, VoteIn, toCaseOut, toJurorOut } from './dto';
 import { JuryService } from './jury.service';
+import { VotingService } from './voting.service';
 
 /** Guard order matters: authenticate (401), CSRF (403), creator (403); pipes only run after all guards pass. */
 @Controller('cases')
@@ -30,27 +32,70 @@ export class CasesController {
     @InjectRepository(Case) private readonly cases: Repository<Case>,
     @InjectRepository(CaseJuror) private readonly jurors: Repository<CaseJuror>,
     private readonly jury: JuryService,
+    private readonly voting: VotingService,
   ) {}
 
   @Get()
   async list(@Req() req: AuthenticatedRequest): Promise<CaseOut[]> {
-    const rows = await this.visibleCases(req.user).orderBy('c.createdAt', 'DESC').addOrderBy('c.id', 'DESC').getMany();
+    const query = () => this.visibleCases(req.user).orderBy('c.createdAt', 'DESC').addOrderBy('c.id', 'DESC').getMany();
+    let rows = await query();
+    const due = rows.filter((c) => c.status === 'voting').map((c) => c.id);
+    if (due.length) {
+      await this.voting.settle(due);
+      rows = await query();
+    }
     // Lists intentionally omit the panel, even for admins and assigned jurors.
     return rows.map(toCaseOut);
   }
 
   @Get(':id')
   async detail(@Req() req: AuthenticatedRequest, @Param('id') rawId: string): Promise<CaseDetailOut> {
-    const row = await this.visibleCases(req.user)
+    const row = await this.visibleCase(req.user, rawId);
+    if (row.status === 'voting') await this.voting.settle([row.id]);
+    return this.detailFor(req.user, row.id);
+  }
+
+  /**
+   * Unreadable cases are 404 (as for reads); readers who are not on the panel, such as the owner or an admin, are
+   * 403; then the body (422); then the voting rules (409).
+   */
+  @Post(':id/vote')
+  @HttpCode(200)
+  async vote(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') rawId: string,
+    @Body() body: unknown,
+  ): Promise<CaseDetailOut> {
+    const row = await this.visibleCase(req.user, rawId);
+    if (!(await this.jurors.existsBy({ caseId: row.id, userId: req.user.id }))) {
+      throw new ForbiddenException('Only drawn jurors can vote');
+    }
+    const { outcomeIndex } = new ZodBodyPipe(VoteIn).transform(body ?? {});
+    if (outcomeIndex >= row.outcomes.length) {
+      throw new UnprocessableException('outcomeIndex must refer to one of the case outcomes');
+    }
+    await this.voting.cast(row.id, req.user.id, outcomeIndex);
+    return this.detailFor(req.user, row.id);
+  }
+
+  private async visibleCase(user: User, rawId: string): Promise<Case> {
+    const row = await this.visibleCases(user)
       .andWhere('c.id = :id', { id: parseId(rawId) })
       .getOne();
     if (!row) throw new NotFoundException();
+    return row;
+  }
+
+  /** Votes are public once resolved; while voting each juror only sees their own choice. */
+  private async detailFor(viewer: User, caseId: number): Promise<CaseDetailOut> {
+    const row = await this.cases.findOneByOrFail({ id: caseId });
     const panel = await this.jurors.find({
-      where: { caseId: row.id },
+      where: { caseId },
       relations: { user: true },
       order: { position: 'ASC' },
     });
-    return { ...toCaseOut(row), jurors: panel.map(toJurorOut) };
+    const resolved = row.status === 'resolved';
+    return { ...toCaseOut(row), jurors: panel.map((j) => toJurorOut(j, resolved || j.userId === viewer.id)) };
   }
 
   /** Assignment, not the current role flag, grants access. EXISTS avoids duplicate owned/assigned rows. */
@@ -95,7 +140,8 @@ export class CasesController {
     // A bodiless POST leaves req.body undefined; for a random draw that is the normal call.
     const { jurorIds } = new ZodBodyPipe(DrawIn).transform(body ?? {});
     const seated = await this.jury.seat(row.id, jurorIds);
-    const jurors = seated.jurors.map(toJurorOut);
+    // Nobody has voted yet on a freshly seated panel.
+    const jurors = seated.jurors.map((j) => toJurorOut(j, false));
     return { case: { ...toCaseOut(seated.case), jurors }, jurors };
   }
 }

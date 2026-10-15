@@ -3,7 +3,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } 
 import { Case } from './case.entity';
 import { User } from './user.entity';
 
-/** A juror drawn (or manually assigned) to a case; their vote window starts at drawnAt. */
+/** A juror drawn (or manually assigned) to a case; their vote window starts at drawnAt. One final vote each. */
 @Entity('case_jurors')
 @Index(['caseId', 'userId'], { unique: true })
 export class CaseJuror {
@@ -35,4 +35,11 @@ export class CaseJuror {
   /** drawnAt + the case's voteWindowSeconds. */
   @Column({ type: 'datetime' })
   deadline: Date;
+
+  /** Index into the case's outcomes; null until this juror votes. */
+  @Column({ type: 'smallint', nullable: true })
+  outcomeIndex: number | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  votedAt: Date | null;
 }
