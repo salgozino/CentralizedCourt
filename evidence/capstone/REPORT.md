@@ -11,12 +11,25 @@ Other files here: `reviewer-prompt.md` (committed before launching the reviewer)
 
 ## 1. Brief
 
-- Source: `day5.md` (gitignored at the repo root; copied below verbatim)
-- Opened at (date, time, TZ):
-- sha256 (`sha256sum day5.md`):
-- Prior exposure: none / <describe>
+- Source: `evidence/capstone/day5.md` (gitignored by the `day5.md` rule; copied below verbatim)
+- Opened by the implementer session at: 2026-10-15T14:20:08-03:00
+- sha256 (`sha256sum evidence/capstone/day5.md`): `bd3be8dde86030ee06a1a4704382528a091c762a4b8e774cb2049b0d556504fb`
+- Prior exposure: the implementer session had not read it before. Earlier today it only listed the repo root, where
+  `day5.md` did not exist. The human wrote the brief beforehand and held it back.
 
-<!-- paste day5.md here, unchanged; commit before any code change -->
+````markdown
+# Day 5 — Reserved feature (held out, gitignored)
+
+## Feature
+Adding a period where the juror can refuse to arbitrate due to conflict of interest.
+If that happens, record the decision and draw another juror from the pool.
+
+## Acceptance criterion
+
+| #   | Criterion                                                                                           | Status | Evidence |
+| --- | --------------------------------------------------------------------------------------------------- | ------ | -------- |
+| 5   | A juror who refuses to arbitrate is replaced by another user with full traceability of the re-draw. | ⬜     |          |
+````
 
 ## 2. Clarification
 
