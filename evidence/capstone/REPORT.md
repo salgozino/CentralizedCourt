@@ -229,5 +229,20 @@ In pass 2 the reviewer read `day5-specs.md` from `HEAD`; that was the context de
 
 | Provider | Tokens / cost | Source |
 |----------|---------------|--------|
+| OpenAI / gpt-6.1-sol (Codex), specs `01a140a9…` | 1,392,625 tokens (input 112,020, cache read 1,268,608, output 11,997) / $0.48 | Codex session log; `tokscale --today --json --group-by client,session,model` |
+| OpenAI / codex-auto-review (Codex guardian of the specs session) | 59,898 tokens / $0.09 | same |
+| OpenAI / gpt-6.1-sol (Codex), implementation and review fix `01a140c9-d996…` | 11,747,331 tokens (input 193,266, cache read 11,511,040, output 43,025) / $2.08 | same |
+| OpenAI / codex-auto-review (2 Codex guardians of the implementation session) | 5,594,437 tokens / $2.97 | same |
+| **OpenAI subtotal** | **18,794,291 tokens / $5.61** | |
+| Anthropic / claude-opus-5-5 (Claude Code), reviewer passes 1–3 `1c2a60e1…` | 6,094,259 tokens (cache write 137,028, cache read 5,920,550, output 36,585) / $2.03 | Claude Code session log; same `tokscale` report |
+| **Total** | **24,888,550 tokens / $7.65** | |
+
+Costs are API-equivalent estimates from `tokscale pricing` (LiteLLM prices: gpt-6.1-sol $2.00 input / $10.00
+output / $0.10 cache read per 1M; claude-opus-5-5 $4.00 / $20.00 / $0.20 read / $5.00 write per 1M). The sessions ran
+on subscription plans, so the money actually spent is plan usage, not this amount. `codex-auto-review` has no price of
+its own; `tokscale` matched it to `perplexity/openai/gpt-5.3-codex` ($3.50 / $28.00 / $0.35 per 1M), so the guardian
+cost is the least reliable figure. The "Codex guardian" sessions are approval-review subagents Codex starts by itself
+(`parent_thread_id` points to the parent session). Not counted: six short Codex sessions in this worktree between 14:20
+and 14:56 that are not part of the recorded roles, and the helper session that assembled this evidence.
 
 Left on purpose:
