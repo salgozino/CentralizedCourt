@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { ApiError, createCase, drawJurors, getCase, getMe, listCases, setUserRoles, verifyCode } from './api';
+import { ApiError, castVote, createCase, drawJurors, getCase, getMe, listCases, setUserRoles, verifyCode } from './api';
 
 const fetchMock = vi.fn();
 
@@ -126,6 +126,24 @@ test('drawJurors returns the case and the drawn jurors', async () => {
   };
   fetchMock.mockResolvedValue(json(200, result));
   await expect(drawJurors(7)).resolves.toEqual(result);
+});
+
+test('castVote POSTs the outcome index with CSRF and returns the updated case', async () => {
+  const detail = { id: 7, status: 'voting', jurors: [{ jurorId: 5, hasVoted: true, outcomeIndex: 1 }] };
+  fetchMock.mockResolvedValue(json(200, detail));
+  await expect(castVote(7, 1)).resolves.toEqual(detail);
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe('/api/cases/7/vote');
+  expect(init.method).toBe('POST');
+  expect(new Headers(init.headers).get('X-CSRFToken')).toBe('abc123');
+  expect(JSON.parse(init.body)).toEqual({ outcomeIndex: 1 });
+});
+
+test('castVote rejects with ApiError carrying the detail', async () => {
+  fetchMock.mockResolvedValue(json(409, { detail: 'You have already voted' }));
+  const err = await castVote(7, 0).catch((e) => e);
+  expect(err).toBeInstanceOf(ApiError);
+  expect(err).toMatchObject({ status: 409, detail: 'You have already voted' });
 });
 
 test.each([
