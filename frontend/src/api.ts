@@ -38,6 +38,9 @@ export type DrawnJuror = {
 /** Body of `GET /api/cases/:id`: the case plus its seated panel in draw order (empty before the draw). */
 export type CaseDetail = Case & { jurors: DrawnJuror[] };
 
+/** A juror who can be picked for a manual panel (`GET /api/cases/:id/eligible-jurors`): no email. */
+export type EligibleJuror = { jurorId: number; name: string };
+
 /** Body of `POST /api/cases/:id/draw` (200): the case, now `voting`, and the drawn panel in order. */
 export type DrawResult = { case: CaseDetail; jurors: DrawnJuror[] };
 
@@ -135,7 +138,12 @@ export async function castVote(caseId: number, outcomeIndex: number): Promise<Ca
   return (await request('POST', `/cases/${caseId}/vote`, { outcomeIndex })).json();
 }
 
-/** Random draw only (manual picker deferred). Errors surface as `ApiError`. */
-export async function drawJurors(caseId: number): Promise<DrawResult> {
-  return (await request('POST', `/cases/${caseId}/draw`)).json();
+/** Random draw without `jurorIds`; a manual draw sends the picked ids in panel order. Errors surface as `ApiError`. */
+export async function drawJurors(caseId: number, jurorIds?: number[]): Promise<DrawResult> {
+  return (await request('POST', `/cases/${caseId}/draw`, jurorIds && { jurorIds })).json();
+}
+
+/** The pool a manual panel is picked from; only the case creator or an admin may read it. */
+export async function listEligibleJurors(caseId: number): Promise<EligibleJuror[]> {
+  return (await request('GET', `/cases/${caseId}/eligible-jurors`)).json();
 }
