@@ -18,19 +18,30 @@ test('a creator picks a manual panel by hand and it is seated in that order', as
   await page.getByRole('button', { name: 'Create case' }).click();
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 
-  const pool = page.getByRole('list', { name: 'Eligible jurors' });
-  await expect(pool.getByRole('listitem')).toHaveText(['Juror 1', 'Juror 2', 'Juror 3', 'Juror 4', 'Juror 5']);
+  const add = page.getByRole('button', { name: /Add a juror/ });
   const assign = page.getByRole('button', { name: 'Assign jurors' });
+  await add.click();
+  await expect(page.getByRole('option')).toHaveText(['Juror 1', 'Juror 2', 'Juror 3', 'Juror 4', 'Juror 5']);
+  await page.keyboard.press('Escape');
   await expect(assign).toBeDisabled();
-  for (const name of ['Juror 3', 'Juror 1', 'Juror 5']) await pool.getByLabel(name).check();
-  await expect(page.getByText('Selected 3 of 3: Juror 3, Juror 1, Juror 5')).toBeVisible();
-  await expect(pool.getByLabel('Juror 2')).toBeDisabled();
+  for (const name of ['Juror 3', 'Juror 2', 'Juror 1']) {
+    await add.click();
+    await page.getByRole('option', { name, exact: true }).click();
+  }
+  await expect(add).toBeDisabled();
+  // A chip removes its juror and frees the seat for another pick.
+  await page.getByRole('button', { name: 'Remove Juror 2' }).click();
+  await add.click();
+  await page.getByRole('option', { name: 'Juror 5', exact: true }).click();
+  const chips = page.getByRole('list', { name: 'Selected jurors' }).getByRole('listitem');
+  await expect(chips).toHaveText([/Juror 3/, /Juror 1/, /Juror 5/]);
+  await expect(add).toBeDisabled();
   await assign.click();
 
   const panel = page.getByRole('list', { name: 'Drawn jurors' }).getByRole('listitem');
   await expect(panel).toHaveText([/^Juror 3 · Vote by/, /^Juror 1 · Vote by/, /^Juror 5 · Vote by/]);
   await expect(page.getByText('Voting').first()).toBeVisible();
-  await expect(pool).toHaveCount(0);
+  await expect(add).toHaveCount(0);
 
   await page.reload();
   await expect(panel).toHaveText([/^Juror 3 · Vote by/, /^Juror 1 · Vote by/, /^Juror 5 · Vote by/]);

@@ -6,6 +6,9 @@ export const STATUS_LABELS: Record<CaseStatus, string> = {
   resolved: 'Resolved',
 };
 
+/** "1 juror", "3 jurors". */
+export const jurorCount = (n: number) => `${n} juror${n === 1 ? '' : 's'}`;
+
 /** A resolved case without a winning outcome (split, tie or no votes) has a null result. */
 export const resultLabel = (result: string | null) => result ?? 'No majority';
 

@@ -4,7 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { getCase, type Case, type CaseDetail, type User } from '../api';
 import { formatDuration } from '../cases/duration';
 import { useCaseRead } from '../cases/useCaseRead';
-import { STATUS_LABELS, resultLabel } from '../cases/presentation';
+import { STATUS_LABELS, jurorCount, resultLabel } from '../cases/presentation';
 import CaseStatusBadge from './CaseStatusBadge';
 import DrawJurorsPanel from './DrawJurorsPanel';
 import VotePanel from './VotePanel';
@@ -66,7 +66,7 @@ function CaseDetail({
     ['Status', STATUS_LABELS[c.status]],
     ['Result', c.status === 'resolved' ? resultLabel(c.result) : 'Not resolved yet'],
     ['Voting window', `${formatDuration(c.voteWindowSeconds)} (${c.voteWindowSeconds} seconds)`],
-    ['Panel size', `${c.panelSize} jurors`],
+    ['Panel size', jurorCount(c.panelSize)],
     ['Selection method', c.selectionMethod === 'random' ? 'Random draw' : 'Manual selection'],
     ['Created', new Date(c.createdAt).toLocaleString()],
     ['Last updated', new Date(c.updatedAt).toLocaleString()],

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@kleros/ui-components-library';
 import { ApiError, drawJurors, type CaseDetail, type DrawResult, type DrawnJuror } from '../api';
-import { errorMessage } from '../cases/presentation';
+import { errorMessage, jurorCount } from '../cases/presentation';
 import ManualJurorPicker from './ManualJurorPicker';
 
 const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
@@ -27,7 +27,7 @@ export default function DrawJurorsPanel({
     return (
       <section className={card}>
         <h2 className="mb-4 text-lg font-semibold">Jurors</h2>
-        <p>This case is waiting for the creator to assign {c.panelSize} jurors.</p>
+        <p>This case is waiting for the creator to assign {jurorCount(c.panelSize)}.</p>
       </section>
     );
   }
@@ -49,7 +49,7 @@ export default function DrawJurorsPanel({
   return (
     <section className={`${card} flex flex-col items-start gap-4`}>
       <h2 className="text-lg font-semibold">Jurors</h2>
-      <p>This case is waiting for a random draw of {c.panelSize} jurors.</p>
+      <p>This case is waiting for a random draw of {jurorCount(c.panelSize)}.</p>
       {error && (
         <p role="alert" className="text-sm text-klerosUIComponentsError">
           {error}
