@@ -33,23 +33,41 @@ If that happens, record the decision and draw another juror from the pool.
 
 ## 2. Clarification
 
-| # | Question (verbatim) | Answer (verbatim) | Resulting spec |
-|---|---------------------|-------------------|----------------|
+**Specification concluded on 2026-10-15. Implementation has not started.** The user requested that work stop
+after recording the agreed specification.
 
-Assumptions taken without asking:
+- [Agreed specification and verification requirements](day5-specs.md#agreed-specification)
+- [Complete clarification record: Q1–Q18, answers and resulting decisions](day5-specs.md#clarification-record)
+- [Specification completion log](day5-specs.md#completion-log)
 
-Out of scope:
+Summary: only new manual-selection cases gain a configurable refusal period (24-hour form default,
+60 seconds–30 days, immutable). Each assignment gets its own window; silence means continuing. Refusal
+is final and closes at the juror's exact deadline. The creator/admin manually fills vacant seats one at a
+time, excluding everyone previously drawn. Vacancies wait indefinitely. The panel starts voting together
+at the latest current refusal deadline once all seats are filled. Existing cases and random draws keep
+their current lifecycle.
 
-<!-- at the end, paste the Specs and Log of odd/tasks/<feature>.md (gitignored) here -->
+Traceability uses permanently retained assignment records containing the case, seat, juror, selecting
+actor, draw time, refusal deadline and refusal time. Replacement assignments link to their predecessors.
+The creator, admins and current jurors can view the history. Refused assignments grant no juror access
+or voting rights and do not count toward resolution or role-removal restrictions; independent creator/admin
+permissions remain. Current seats block juror-role removal during refusal and voting.
+
+Assumptions taken without asking: none added to the agreed feature behavior in this record. Implementation
+details beyond the specification remain for the later implementation session.
+
+Out of scope: refusal for random draws or existing cases; automatic replacement; refusal explanations or
+approval; refusal withdrawal/override; vacancy cancellation/timeouts; a separate general-purpose audit system.
 
 ## 3. Sessions
 
 | Role | Provider / model / harness | Session ID | Worktree | Start | End |
 |------|----------------------------|------------|----------|-------|-----|
-| Implementer | Anthropic / Opus 5.5 / Pi gentle-shell (ODD) | | ../CentralizedCourt-capstone | | |
-| Reviewer | | | ../CentralizedCourt-review | | |
+| Specs | OpenAI / gpt-6.1-sol / Codex | 01a140a9-eb16-7ca3-81fe-0c0d5c655b09 | /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone | 2026-10-15T14:44:00-03:00 | 2026-10-15T15:18:25-03:00 |
 
-Same-provider exception (only if used): justification and how the session was kept separate.
+Branch: `feat/capstone-day5`. Session metadata verifies the model, session ID, worktree and start time.
+The specification session is closed. Implementation will take place in a new session. No implementation
+or reviewer session has taken place, so the scaffolded session entries were removed.
 
 ## 4. Implementation and checks
 
