@@ -109,18 +109,11 @@ test('a 401 calls onUnauthorized', async () => {
   await vi.waitFor(() => expect(onUnauthorized).toHaveBeenCalledTimes(1));
 });
 
-test('manual cases awaiting jurors show a note and no draw button', async () => {
-  vi.mocked(getCase).mockResolvedValue({ ...awaiting, selectionMethod: 'manual' });
-  await setup();
-  expect(screen.getByText('Manual juror assignment is not available yet.')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Draw jurors' })).not.toBeInTheDocument();
-});
-
 test('cases that are already voting show no draw button', async () => {
   vi.mocked(getCase).mockResolvedValue(votingCase);
   await setup();
   expect(screen.queryByRole('button', { name: 'Draw jurors' })).not.toBeInTheDocument();
-  expect(screen.queryByText('Manual juror assignment is not available yet.')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Assign jurors' })).not.toBeInTheDocument();
 });
 
 test('a loaded voting case shows its persisted panel in draw order with each deadline', async () => {
