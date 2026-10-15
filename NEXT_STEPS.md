@@ -5,7 +5,7 @@ be able to resume from here.
 
 ## Day 5: manual juror refusal
 
-- Implemented on `feat/day5-refusal`; specification: `evidence/capstone/day5-specs.md`.
+- Implemented on `feat/capstone-day5`; specification: `evidence/capstone/day5-specs.md`.
 - New manual requests require `refusalWindowSeconds` (60 seconds–30 days); random requests reject it.
   The form defaults to 24 hours and offers days/hours/minutes separately from voting duration.
 - Apply the additive `AddRefusal` migration with `make migrate` before starting an existing development DB.
