@@ -96,13 +96,40 @@ be able to resume from here.
 - Evidence: red commit `7c532d1`; backend red run had 8 failures. The contract red run included expected draw failures, but cases contract compilation was blocked by an unsupported helper option; that test option was corrected during green implementation.
 - Checks: `make test` passes (161 backend, 94 frontend, 70 contract); automated HTTP tests cover owner/admin/assigned vs unrelated creator/juror/user, anonymous, privacy and panel ordering. Live curl skill verification passed against `http://localhost:8001` using `/tmp/backend-w1.log` after the user applied the original name migration: owner/admin/assigned reads, hidden reads, no-CSRF reads, draw guard precedence, owner/admin draws, panel privacy/order and deadlines. Fixtures #1/#2 were created. That run preceded the NOT NULL change and showed null names in old fixtures; rerun after resetting/reseeding to verify live non-null names.
 
+## Slice 4: vote + resolve (branch `feat/vote-resolve`, not merged)
+
+- Rules (user decisions, 2026-10-15): a `voting` case resolves when every panel juror voted or the clock reached every
+  juror's deadline. The winner needs strictly more than half of the cast votes; a split, a tie or no votes resolve
+  with `result: null` (UI "No majority"). Votes are final. While voting only who voted is visible (each juror sees
+  their own choice); every choice is public once resolved.
+- API: `POST /api/cases/:id/vote` `{outcomeIndex}` (session + CSRF) answers 200 with the case detail. Order: 401, 403
+  CSRF, 404 (missing/invalid or unreadable case), 403 `Only drawn jurors can vote` (owner/admin), 422 body or
+  `outcomeIndex must refer to one of the case outcomes`, 409 `The voting deadline has passed` (clock ≥ own
+  deadline), 409 `Votes are only accepted while the case is voting`, 409 `You have already voted`. Assignment, not
+  the current juror flag, grants the vote.
+- Juror DTO (detail and draw) gains `hasVoted` and `outcomeIndex`. Lists still omit the panel.
+- No scheduler: expiry is settled lazily on case list, case detail and vote, with the injectable `CLOCK` provider
+  (`backend/src/cases/clock.ts`), also used for `drawnAt`.
+- Storage: nullable `outcomeIndex` and `votedAt` on `case_jurors`, migration `AddJurorVotes` (additive). An existing
+  local DB only needs `make migrate`; no reset.
+- UI: case detail shows Voted/Pending per juror, a "Your vote" panel for the signed-in panel juror (outcome radios,
+  "Cast vote"), and "Resolved: <outcome>" or "Resolved: No majority"; the list shows the result.
+- Evidence: `backend/test/vote.spec.ts`, `contract-tests/tests/acceptance.contract.test.ts`,
+  `frontend/src/components/VotePanel.test.tsx`, `e2e/tests/vote.spec.ts`; live auth-verification on an isolated
+  backend (15 rows match). `make test`: 191 backend, 114 frontend, 73 contract, 2 e2e; `make lint` passes.
+
 ## Next
 
-1. Vote casting (slice 4): needs a spec (endpoint shape, injected clock, tie rule) before the red
-   tests. Write the end-to-end acceptance test skeleton (HTTP calls only) with it.
-2. Slice 3 is closed in `ACCEPTANCE.md`. Manual juror picker UI remains pending (not an acceptance criterion).
-3. Local DB was reset on 2026-10-12 (`make migrate` + `make seed`: 4 migrations, 9 named users).
+1. Slice 4: manual browser check done by the user (2026-10-15). Next: merge `feat/vote-resolve` into master.
+2. All acceptance rows are ✅ except the slice 1 manual browser check (🟡).
+3. Manual juror picker UI remains pending (not an acceptance criterion).
 4. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
+5. The vote form reads the clock once per page load; a deadline crossed while the page is open is rejected by the
+   backend (409), and the UI then reloads the case and shows it resolved with the reason (`364133f`).
+6. Visual pass (2026-10-15, Playwright screenshots): low contrast in two Kleros library styles, the disabled
+   "Cast vote" button and unchecked radio circles. Fixing it means overriding library styles; not done.
+7. The frontend "Your voting deadline has passed." message is a fallback that is practically unreachable today: every
+   juror of a panel gets the same deadline, so once it passes the case resolves and the vote form disappears.
 
 ## Open questions / decisions pending
 
@@ -112,10 +139,6 @@ be able to resume from here.
 - Rule: an admin can do everything a creator can (and every admin action), without needing the
   extra role flags. Exception: an admin can never be drawn, assigned or vote as a juror, even
   with the juror flag set, because they already control the case (slice 3 must enforce it).
-- Tie-breaking rule when votes are split (needed before slice 4). An odd panel only avoids ties
-  with 2 outcomes and every juror voting.
-- Votes reference the outcome label; decide before slice 4 whether matching is exact or
-  case-insensitive (outcomes are unique ignoring case).
 - Evidence (deferred, separate migration): PDF URLs added AFTER the case is created and BEFORE the
   draw, only by the creator or an admin; not part of `POST /api/cases`. Decide then whether a plain
   `string[]` is enough or each item needs `addedBy`/`addedAt` (audit log, concurrent appends).

@@ -11,7 +11,7 @@ vi.mock('../api', async (orig) => ({
   listCases: vi.fn().mockResolvedValue([]),
   getCase: vi.fn(),
 }));
-import { ApiError, createCase, type Case, type NewCase } from '../api';
+import { ApiError, createCase, listCases, type Case, type NewCase } from '../api';
 
 beforeEach(() => {
   vi.mocked(createCase).mockReset();
@@ -71,6 +71,19 @@ const expectedInput: NewCase = {
   panelSize: 3,
   selectionMethod: 'random',
 };
+
+test('the list shows the result of resolved cases, including no majority', async () => {
+  vi.mocked(listCases).mockResolvedValueOnce([
+    stored(expectedInput, { id: 1, title: 'Won', status: 'resolved', result: 'Refund' }),
+    stored(expectedInput, { id: 2, title: 'Split', status: 'resolved', result: null }),
+    stored(expectedInput, { id: 3, title: 'Open', status: 'voting', result: null }),
+  ]);
+  setup();
+  const items = within(await screen.findByRole('list', { name: 'Cases' })).getAllByRole('listitem');
+  expect(items[0]).toHaveTextContent('Result: Refund');
+  expect(items[1]).toHaveTextContent('Result: No majority');
+  expect(items[2]).not.toHaveTextContent('Result:');
+});
 
 test('without the role, New case is disabled and explained', async () => {
   setup(false);

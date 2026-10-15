@@ -4,9 +4,10 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { getCase, type Case, type CaseDetail, type User } from '../api';
 import { formatDuration } from '../cases/duration';
 import { useCaseRead } from '../cases/useCaseRead';
-import { STATUS_LABELS } from '../cases/presentation';
+import { STATUS_LABELS, resultLabel } from '../cases/presentation';
 import CaseStatusBadge from './CaseStatusBadge';
 import DrawJurorsPanel from './DrawJurorsPanel';
+import VotePanel from './VotePanel';
 
 const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
 
@@ -57,13 +58,13 @@ function CaseDetail({
   justCreated,
   onUnauthorized,
 }: Readonly<{ value: CaseDetail; user: User; justCreated: boolean; onUnauthorized: () => void }>) {
-  // A successful draw returns the updated case; it replaces the loaded one.
+  // A successful draw or vote returns the updated case; it replaces the loaded one.
   const [c, setCase] = useState(value);
   const fields = [
     ['Case ID', `#${c.id}`],
     ['Creator ID', `#${c.creatorId}`],
     ['Status', STATUS_LABELS[c.status]],
-    ['Result', c.result ?? 'Not resolved yet'],
+    ['Result', c.status === 'resolved' ? resultLabel(c.result) : 'Not resolved yet'],
     ['Voting window', `${formatDuration(c.voteWindowSeconds)} (${c.voteWindowSeconds} seconds)`],
     ['Panel size', `${c.panelSize} jurors`],
     ['Selection method', c.selectionMethod === 'random' ? 'Random draw' : 'Manual selection'],
@@ -87,6 +88,12 @@ function CaseDetail({
           <CaseStatusBadge status={c.status} />
         </div>
       </div>
+      {c.status === 'resolved' && (
+        <section aria-label="Result" className={card}>
+          <h2 className="mb-2 text-lg font-semibold">Result</h2>
+          <p className="text-xl font-semibold">Resolved: {resultLabel(c.result)}</p>
+        </section>
+      )}
       <section className={card}>
         <h2 className="mb-4 text-lg font-semibold">Description</h2>
         <p className="whitespace-pre-wrap break-words">{c.description}</p>
@@ -125,9 +132,8 @@ function CaseDetail({
         onDrawn={(result) => setCase(result.case)}
         onUnauthorized={onUnauthorized}
       />
-      <p className="text-sm text-klerosUIComponentsSecondaryText">
-        Cases cannot be edited or deleted. Voting will be available in a later slice.
-      </p>
+      <VotePanel value={c} user={user} onVoted={setCase} onUnauthorized={onUnauthorized} />
+      <p className="text-sm text-klerosUIComponentsSecondaryText">Cases cannot be edited or deleted.</p>
     </article>
   );
 }

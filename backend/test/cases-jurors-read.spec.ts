@@ -56,6 +56,8 @@ describe('assigned case reads over HTTP', () => {
           name: ['Juror 3', 'Juror 1', 'Juror 2'][i],
           drawnAt: expect.any(String),
           deadline: expect.any(String),
+          hasVoted: false,
+          outcomeIndex: null,
         })),
       );
       expect(JSON.stringify(res.body)).not.toContain('@example.com');

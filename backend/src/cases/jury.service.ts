@@ -6,6 +6,8 @@ import { DataSource, EntityManager } from 'typeorm';
 import { Case, CaseJuror, User } from '../entities';
 import { UnprocessableException } from '../http/errors';
 
+import { CLOCK, Clock } from './clock';
+
 /** Returns an integer in [0, maxExclusive). Overridden in tests with a seeded generator. */
 export type DrawRng = (maxExclusive: number) => number;
 export const DRAW_RNG = 'DRAW_RNG';
@@ -22,6 +24,7 @@ export class JuryService {
   constructor(
     private readonly dataSource: DataSource,
     @Inject(DRAW_RNG) private readonly rng: DrawRng,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   /** Seats the panel and moves the case to voting; `jurorIds` is only given for manual cases. */
@@ -35,11 +38,20 @@ export class JuryService {
       const moved = await manager.update(Case, { id: caseId, status: 'awaiting_jurors' }, { status: 'voting' });
       if (!moved.affected) throw new ConflictException(NOT_AWAITING);
 
-      const drawnAt = new Date();
+      const drawnAt = this.clock();
       const deadline = new Date(drawnAt.getTime() + row.voteWindowSeconds * 1000);
       const jurors = await manager.save(
         panel.map((user, position) =>
-          manager.create(CaseJuror, { caseId, userId: user.id, user, position, drawnAt, deadline }),
+          manager.create(CaseJuror, {
+            caseId,
+            userId: user.id,
+            user,
+            position,
+            drawnAt,
+            deadline,
+            outcomeIndex: null,
+            votedAt: null,
+          }),
         ),
       );
       return { case: await manager.findOneByOrFail(Case, { id: caseId }), jurors };

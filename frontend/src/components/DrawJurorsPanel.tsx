@@ -27,7 +27,7 @@ export default function DrawJurorsPanel({
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (c.jurors.length > 0) return <DrawnJurorsList jurors={c.jurors} />;
+  if (c.jurors.length > 0) return <DrawnJurorsList value={c} />;
   if (c.status !== 'awaiting_jurors') return null;
   if (c.selectionMethod === 'manual')
     return (
@@ -72,17 +72,25 @@ export default function DrawJurorsPanel({
   );
 }
 
-function DrawnJurorsList({ jurors }: Readonly<{ jurors: DrawnJuror[] }>) {
+/** While voting only who voted is shown; once resolved, every juror's choice is public. */
+function voteStatus(c: CaseDetail, juror: DrawnJuror): string {
+  if (c.status !== 'resolved') return juror.hasVoted ? 'Voted' : 'Pending';
+  return juror.outcomeIndex === null ? 'Did not vote' : `Voted ${c.outcomes[juror.outcomeIndex]}`;
+}
+
+function DrawnJurorsList({ value: c }: Readonly<{ value: CaseDetail }>) {
   return (
     <section className={card}>
       <h2 className="mb-4 text-lg font-semibold">Drawn jurors</h2>
       <ol aria-label="Drawn jurors" className="list-decimal space-y-2 pl-6">
-        {jurors.map((juror) => (
+        {c.jurors.map((juror) => (
           <li key={juror.jurorId} className="break-words">
             {juror.name}
             <span className="text-klerosUIComponentsSecondaryText">
               {' '}
-              · Vote by {new Date(juror.deadline).toLocaleString()}
+              {/* Deadlines no longer matter once the case is resolved. */}
+              {c.status !== 'resolved' && `· Vote by ${new Date(juror.deadline).toLocaleString()} `}·{' '}
+              {voteStatus(c, juror)}
             </span>
           </li>
         ))}

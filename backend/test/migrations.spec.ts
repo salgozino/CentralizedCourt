@@ -33,10 +33,21 @@ describe('migrations', () => {
     expect(dataSourceOptions(dbPath).synchronize).toBe(false);
   });
 
+  it('adds nullable vote columns to case_jurors and reverts them cleanly', async () => {
+    const columns = await dataSource.query('PRAGMA table_info(case_jurors)');
+    expect(columns).toContainEqual(expect.objectContaining({ name: 'outcomeIndex', notnull: 0, dflt_value: null }));
+    expect(columns).toContainEqual(expect.objectContaining({ name: 'votedAt', notnull: 0, dflt_value: null }));
+    await dataSource.undoLastMigration();
+    const reverted = (await dataSource.query('PRAGMA table_info(case_jurors)')).map((c: { name: string }) => c.name);
+    expect(reverted).toEqual(['id', 'caseId', 'userId', 'position', 'drawnAt', 'deadline']);
+    await dataSource.runMigrations();
+  });
+
   it('adds a required name column without a default and round-trips a user name', async () => {
     const columns = await dataSource.query('PRAGMA table_info(users)');
     expect(columns).toContainEqual(expect.objectContaining({ name: 'name', notnull: 1, dflt_value: null }));
-    // Revert and reapply on the empty DB: resetting development data is explicitly permitted.
+    // Revert and reapply on the empty DB (vote columns first): resetting development data is explicitly permitted.
+    await dataSource.undoLastMigration();
     await dataSource.undoLastMigration();
     expect(await dataSource.query('PRAGMA table_info(users)')).not.toContainEqual(
       expect.objectContaining({ name: 'name' }),
@@ -134,7 +145,8 @@ describe('migrations', () => {
     const ds = await migratedDataSource(revertPath);
     const tableNames = async () =>
       (await ds.query(`SELECT name FROM sqlite_master WHERE type = 'table'`)).map((t: { name: string }) => t.name);
-    // First revert the new user-name migration.
+    // First revert the vote columns, then the user-name migration.
+    await ds.undoLastMigration();
     await ds.undoLastMigration();
     expect(await ds.query('PRAGMA table_info(users)')).not.toContainEqual(expect.objectContaining({ name: 'name' }));
     await ds.undoLastMigration();

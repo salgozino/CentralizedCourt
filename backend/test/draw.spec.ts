@@ -25,6 +25,8 @@ interface JurorOut {
   name: string;
   drawnAt: string;
   deadline: string;
+  hasVoted: boolean;
+  outcomeIndex: number | null;
 }
 
 describe('jury draw over HTTP', () => {
@@ -92,7 +94,8 @@ describe('jury draw over HTTP', () => {
       expect(user.isJuror).toBe(true);
       expect(user.isAdmin).toBe(false);
       expect(juror.name).toBe(user.name);
-      expect(Object.keys(juror).sort()).toEqual(['deadline', 'drawnAt', 'jurorId', 'name']);
+      expect(Object.keys(juror).sort()).toEqual(['deadline', 'drawnAt', 'hasVoted', 'jurorId', 'name', 'outcomeIndex']);
+      expect(juror).toMatchObject({ hasVoted: false, outcomeIndex: null });
       const drawnAt = new Date(juror.drawnAt).getTime();
       expect(drawnAt).toBeGreaterThanOrEqual(before - 1000);
       expect(drawnAt).toBeLessThanOrEqual(after + 1000);

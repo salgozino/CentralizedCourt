@@ -34,6 +34,8 @@ describe('jury draw contract', () => {
         name: expect.stringMatching(/^Juror \d$/),
         drawnAt: expect.any(String),
         deadline: expect.any(String),
+        hasVoted: false,
+        outcomeIndex: null,
       });
       expect(Date.parse(juror.deadline) - Date.parse(juror.drawnAt)).toBe(300 * 1000);
     }
