@@ -192,3 +192,119 @@ Spec checks: exact cutoff (refusal.spec.ts:62-63 + probe P4), shared logical vot
   pool exhaustion/multi-vacancy (refusal.spec.ts:112-120), role removal (P3, refusal.spec.ts:128-137), immutability (no PUT/PATCH on cases),
   strict-TDD red commit: NOT VERIFIED (git log out of bounds).
 Verdict: ACCEPT WITH FIXES.
+=== 2026-10-15T16:54:20-03:00 ===
+$ git diff --stat 5366bc7 c86e3de -- . ':(exclude)evidence'; git diff 5366bc7 c86e3de -- . ':(exclude)evidence' | sha256sum; git rev-parse HEAD; git status --short | grep -v '^ D evidence'
+--- tail -30 ---
+ backend/src/cases/dto.ts                           |  1 -
+ backend/src/migrations/1792000000000-AddRefusal.ts | 31 ++++++++++++++++------
+ backend/test/refusal-migration.spec.ts             | 15 +++++++++++
+ frontend/src/components/DrawJurorsPanel.test.tsx   | 19 +++++++++++++
+ frontend/src/components/DrawJurorsPanel.tsx        | 16 +++++++----
+ 5 files changed, 68 insertions(+), 14 deletions(-)
+67cc4274dec2d471473d42dce6d1bcd3042eb0ceb36cb1158c77825a2e3b1b9f  -
+5366bc73786c4c5710e7f112530d497783afcda4
+?? evidence/capstone/checks/validation.txt
+--- exit code: 0 ---
+
+=== 2026-10-15T16:54:39-03:00 ===
+$ rm -rf /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86 && mkdir /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86 && git archive c86e3de | tar -x -C /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86 && for d in . backend frontend contract-tests e2e; do ln -s /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-review/$d/node_modules /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/$d/node_modules; done && git diff --quiet 5366bc7 c86e3de -- package.json backend/package.json frontend/package.json contract-tests/package.json e2e/package.json '*yarn.lock' && echo 'deps unchanged; node_modules symlinked; extracted c86e3de to scratchpad/c86' && grep -n 'DrawnJuror' /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/frontend/src/components/DrawJurorsPanel.tsx | head -3
+--- tail -10 ---
+deps unchanged; node_modules symlinked; extracted c86e3de to scratchpad/c86
+3:import { ApiError, drawJurors, type CaseDetail, type DrawResult, type DrawnJuror } from '../api';
+24:  if (c.jurors.length > 0) return <DrawnJurorsList value={c} />;
+72:function voteStatus(c: CaseDetail, juror: DrawnJuror): string {
+--- exit code: 0 ---
+
+=== 2026-10-15T16:54:59-03:00 ===
+$ cd /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86 && make lint
+--- tail -15 ---
+yarn prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+yarn eslint --max-warnings 0 backend contract-tests e2e
+cd frontend && yarn lint
+--- exit code: 0 ---
+
+=== 2026-10-15T16:55:01-03:00 ===
+$ cd /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/frontend && yarn tsc -b --noEmit 2>&1 || yarn tsc -b
+--- tail -8 ---
+--- exit code: 0 ---
+
+=== 2026-10-15T16:56:52-03:00 ===
+$ cd /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86 && make test
+--- tail -60 ---
+cd backend && yarn test
+
+Test Suites: 19 passed, 19 total
+Tests:       236 passed, 236 total
+Snapshots:   0 total
+Time:        22.586 s
+Ran all test suites.
+cd frontend && yarn test
+
+ RUN  v5.0.3 /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/frontend
+
+
+ Test Files  13 passed (13)
+      Tests  130 passed (130)
+   Start at  16:55:26
+   Duration  13.54s (environment 34%, transform 27%, tests 24%, import 10%, setup 6%)
+
+  Transform  transforming modules took 20.10s · 27% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+cd contract-tests && yarn test
+
+Test Suites: 6 passed, 6 total
+Tests:       76 passed, 76 total
+Snapshots:   0 total
+Time:        26.766 s
+Ran all test suites.
+cd e2e && yarn test
+
+Running 4 tests using 1 worker
+
+  ✓  1 [chromium] › tests/draw.spec.ts:3:5 › a creator draws a random jury and sees the jurors by name with their deadlines (2.8s)
+  ✓  2 [chromium] › tests/manual-draw.spec.ts:3:5 › a creator picks a manual panel by hand and it is seated in that order (5.5s)
+  ✓  3 [chromium] › tests/refusal.spec.ts:3:5 › a juror confirms refusal, loses access, and the creator fills the vacant seat with linked history (9.1s)
+  ✓  4 [chromium] › tests/vote.spec.ts:3:5 › drawn jurors vote in the browser and the case becomes "Resolved: Buyer" (11.1s)
+
+  4 passed (37.8s)
+--- exit code: 0 ---
+
+=== 2026-10-15T16:57:01-03:00 ===
+$ cd /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/backend && SECRET_KEY=probe node /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/migration-down.js /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/backend /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/c86-down.sqlite3
+--- tail -5 ---
+up: InitialSchema1791217121849,CreateCases1791407902997,CreateCaseJurors1791480908801,AddUserName1791572083979,AddJurorVotes1791900000000,AddRefusal1792000000000
+down: OK id,caseId,userId,position,drawnAt,deadline,outcomeIndex,votedAt
+--- exit code: 0 ---
+
+=== 2026-10-15T16:57:02-03:00 ===
+$ cd /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/backend && SECRET_KEY=probe node /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/upgrade-schema.js /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/backend /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/c86-upgrade.sqlite3
+--- tail -12 ---
+migrated: AddRefusal1792000000000
+rows before: [{"id":1,"caseId":1,"userId":4,"position":0,"drawnAt":"2030-01-01 00:00:00","deadline":"2030-01-01 00:02:00","outcomeIndex":null,"votedAt":null}]
+rows after : [{"id":1,"caseId":1,"userId":4,"position":0,"drawnAt":"2030-01-01 00:00:00","deadline":"2030-01-01 00:02:00","outcomeIndex":null,"votedAt":null,"selectedById":null,"predecessorId":null,"refusalDeadline":null,"refusedAt":null}]
+indexes: [{"name":"IDX_8fdc4225faee16a947a22469e6","sql":"CREATE UNIQUE INDEX \"IDX_8fdc4225faee16a947a22469e6\" ON \"case_jurors\" (\"caseId\", \"userId\") "},{"name":"IDX_2ebefde32f44a05779ac6cc85b","sql":"CREATE INDEX \"IDX_2ebefde32f44a05779ac6cc85b\" ON \"case_jurors\" (\"userId\") "},{"name":"current_case_seat","sql":"CREATE UNIQUE INDEX current_case_seat ON case_jurors(caseId, position) WHERE refusedAt IS NULL"},{"name":"assignment_successor","sql":"CREATE UNIQUE INDEX assignment_successor ON case_jurors(predecessorId) WHERE predecessorId IS NOT NULL"}]
+fks: [["predecessorId","case_jurors","RESTRICT"],["selectedById","users","RESTRICT"],["caseId","cases","CASCADE"],["userId","users","RESTRICT"]]
+fk_check: []
+bad selectedById: rejected - SqliteError: FOREIGN KEY constraint failed
+duplicate (caseId,userId): rejected - SqliteError: UNIQUE constraint failed: case_jurors.caseId, case_jurors.position
+--- exit code: 0 ---
+
+=== 2026-10-15T16:57:11-03:00 ===
+$ cd /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/c86/backend && SECRET_KEY=probe DB_PATH=/tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/c86-drift.sqlite3 node dist/cli/migrate.js >/dev/null && SECRET_KEY=probe DB_PATH=/tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/c86-drift.sqlite3 yarn typeorm-ts-node-commonjs migration:generate -d src/data-source.ts --dryrun /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/Drift 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tail -3
+--- tail -5 ---
+No changes in database schema were found - cannot generate a migration. To create a new empty migration use "typeorm migration:create" command
+--- exit code: 0 ---
+
+
+=== Pass 3: delta 5366bc7..c86e3de (sha256 67cc4274…1b9f), run in scratchpad extract of c86e3de (deps unchanged, node_modules symlinked) ===
+Note: the first "rm -f ... && probe" chain above aborted on a zsh no-match glob; the drift dry-run was re-run separately (last entry).
+#1 FK schema mismatch: FIXED — migration:generate dry-run "No changes in database schema were found"; new spec refusal-migration.spec.ts:62.
+   Populated upgrade keeps rows, indexes, all 4 FKs (RESTRICT/CASCADE), fk_check empty, bad FK rejected; revert works.
+#2 dead DrawOut.assignmentHistory: FIXED (dto.ts line removed; backend build + tsc pass).
+#3 non-null chain DrawJurorsPanel: FIXED — optional chaining + fallback text; DrawJurorsPanel.test.tsx covers undefined/[] history.
+New issues: none blocking. Advisory: AddRefusal edited in place — a dev DB that already ran the old version keeps unnamed FKs.
+Verdict: ACCEPT.

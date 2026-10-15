@@ -67,6 +67,7 @@ approval; refusal withdrawal/override; vacancy cancellation/timeouts; a separate
 | Implementation | OpenAI / gpt-6.1-sol / Codex | 01a140c9-d996-7311-84bf-6ee552d5c61f | /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone | 2026-10-15T15:18:52-03:00 | 2026-10-15T15:32:08-03:00 | 13m 16s |
 | Reviewer pass 1 | Anthropic / Opus 5.5 (medium effort) / Claude Code | 1c2a60e1-53d6-44bf-bb30-762d57461a33 | ../CentralizedCourt-review (detached at `5366bc7`) | 2026-10-15T16:23-03:00 | 2026-10-15T16:30-03:00 | 7m |
 | Reviewer pass 2 (same session) | Anthropic / Opus 5.5 (medium effort) / Claude Code | 1c2a60e1-53d6-44bf-bb30-762d57461a33 | ../CentralizedCourt-review (detached at `5366bc7`) | ~2026-10-15T16:36-03:00 | 2026-10-15T16:37:58-03:00 | ~2m |
+| Reviewer pass 3, fix check (same session) | Anthropic / Opus 5.5 (medium effort) / Claude Code | 1c2a60e1-53d6-44bf-bb30-762d57461a33 | ../CentralizedCourt-review (still at `5366bc7`; checks ran on a scratchpad extract of `c86e3de`) | 2026-10-15T16:54:20-03:00 | 2026-10-15T16:57:11-03:00 | ~3m |
 
 Branch: `feat/capstone-day5`. Session metadata verifies the model, session ID, worktree and start time.
 Implementation duration runs from session creation to its initial completion message, rounded to the nearest
@@ -74,7 +75,7 @@ second; later branch correction and report edits are excluded.
 
 Reviewer times: pass 1 from `reviewer-pass1.md`. Pass 2 start was not recorded; it lasted about two minutes from
 sending the message, and its end is the last timestamped entry of the reviewer's own log
-([reviewer-validation.txt](checks/reviewer-validation.txt)), so its start is approximate.
+([reviewer-validation.txt](checks/reviewer-validation.txt)), so its start is approximate. Pass 3 times are the first and last timestamped entries of the same log.
 The implementer (OpenAI) and the reviewer (Anthropic) are different providers, so no same-provider exception applies.
 
 ## 4. Implementation and checks
@@ -117,16 +118,24 @@ Intermediate attempts are retained in [day5-green.txt](checks/day5-green.txt),
   because pass 1 judged the feature against the one-line brief, while the scope (manual cases only, manual
   replacement, vacancies wait) was agreed in clarification. Verdict: **ACCEPT WITH FIXES**. Output:
   [reviewer-pass2.md](reviewer-pass2.md).
+- Pass 3 (fix check): same session, asked whether it would now approve the fix delta clean.
+  Delta `git diff 5366bc7 c86e3de -- . ':(exclude)evidence'`, sha256
+  `67cc4274dec2d471473d42dce6d1bcd3042eb0ceb36cb1158c77825a2e3b1b9f` (5 files, +68/−14). No bundle or separate prompt
+  file was prepared; the message was sent directly. The reviewer reran `make lint`, the frontend typecheck,
+  `make test` (236/130/76/4, exit 0), `migration:generate --dryrun` ("No changes in database schema were found") and
+  an upgrade of a populated DB, on a scratchpad extract of `c86e3de`. Verdict: **ACCEPT**, all three remaining
+  findings fixed with tests. Output: [reviewer-pass3.md](reviewer-pass3.md).
 
 | Finding | Pass 1 | Pass 2 | Changed by context? | Valid? | Action (fixed in <sha> / follow-up / rejected, why) |
 |---------|--------|--------|---------------------|--------|-----------------------------------------------------|
 | Random-draw cases cannot refuse (`jury.service.ts:41`, `dto.ts:14`) | Major | Withdrawn | Yes: spec Q1, Q6 | No, against the agreed spec | Rejected: refusal applies to manual cases only by decision |
 | Replacement is picked by hand, not drawn from the pool | Major (part of #2) | Withdrawn | Yes: spec Q2, Q11 | No, against the agreed spec | Rejected: manual replacement by creator/admin by decision |
 | Empty seat waits forever, voting start can be pushed back (`jury.service.ts:83`) | Major (part of #2) | Withdrawn | Yes: spec Q7 | No, against the agreed spec | Rejected: "Vacancies wait indefinitely" by decision |
-| Migration foreign keys do not match the entities; next `migration:generate` rebuilds `case_jurors` (`AddRefusal.ts:6,8`, `case-juror.entity.ts:44,51`) | Major | Major | No | Yes | Red in `9e33e5c`; green pending |
+| Migration foreign keys do not match the entities; next `migration:generate` rebuilds `case_jurors` (`AddRefusal.ts:6,8`, `case-juror.entity.ts:44,51`) | Major | Major | No | Yes | Fixed in `c86e3de` (red `9e33e5c`); pass 3: FIXED |
 | No refusal reason stored (`dto.ts:136`) | Minor | Withdrawn | Yes: spec | No, against the agreed spec | Rejected: no explanation required by decision |
-| `DrawOut.assignmentHistory` declared but never set (`dto.ts:125`) | Minor | Minor | No | Yes | Fix in progress (pending commit) |
-| Chained `!` on `assignmentHistory` can crash `DrawJurorsPanel.tsx:89` | Minor | Minor | No | Yes | Red in `9e33e5c`; green pending |
+| `DrawOut.assignmentHistory` declared but never set (`dto.ts:125`) | Minor | Minor | No | Yes | Fixed in `c86e3de`; pass 3: FIXED |
+| Chained `!` on `assignmentHistory` can crash `DrawJurorsPanel.tsx:89` | Minor | Minor | No | Yes | Fixed in `c86e3de` (red `9e33e5c`); pass 3: FIXED |
+| Pass 3 advisory: `AddRefusal` edited in place, so a dev DB that ran the old version keeps unnamed foreign keys | n/a | n/a | n/a | Yes, dev-only | Accepted: the migration has not shipped; recreate the dev DB or `migration:revert` then `make migrate` |
 | Other current jurors see who refused and when (`cases.controller.ts:115`) | Minor | Withdrawn | Yes: spec (full history for current jurors) | No, against the agreed spec | Rejected: visibility is part of the agreed history |
 | Strict TDD order | Not checked | NOT VERIFIED | No | n/a | Out of bounds for the reviewer (git log forbidden); see section 4 |
 
@@ -147,6 +156,9 @@ Process deviations:
   fragment in pass 1 major 2, truncated lines in pass 2). They are kept unchanged; the reviewer session holds the
   complete text.
 - `reviewer-pass2.md` lost the template line "Same session as pass 1"; it was the same session (see section 3).
+- Pass 3 ran in the reviewer session that already had the spec context from pass 2, so it is a fix check, not an
+  independent review. The reviewer again logged to `evidence/capstone/checks/validation.txt` in its worktree; the
+  copy in [reviewer-validation.txt](checks/reviewer-validation.txt) now includes pass 3.
 
 ## 6. Human inspection
 
