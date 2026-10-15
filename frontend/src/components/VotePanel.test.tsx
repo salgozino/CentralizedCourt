@@ -90,14 +90,51 @@ test('readers outside the panel only see who voted, not what', async () => {
 });
 
 test.each([
-  [409, 'You have already voted'],
-  [409, 'The voting deadline has passed'],
-])('shows the backend detail of a %i error and keeps the form', async (status, detail) => {
-  vi.mocked(castVote).mockRejectedValue(new ApiError(status, 'failed', detail));
+  [422, 'outcomeIndex must refer to one of the case outcomes'],
+  [500, 'Could not cast your vote. Please try again.'],
+])('shows the error of a %i and keeps the form', async (status, shown) => {
+  vi.mocked(castVote).mockRejectedValue(new ApiError(status, 'failed', status === 422 ? shown : undefined));
   const { events } = await setup(juror1);
   await events.click(screen.getByRole('radio', { name: 'Buyer' }));
   await events.click(castButton()!);
-  expect(await screen.findByRole('alert')).toHaveTextContent(detail);
+  expect(await screen.findByRole('alert')).toHaveTextContent(shown);
+  expect(castButton()).toBeEnabled();
+  expect(getCase).toHaveBeenCalledTimes(1);
+});
+
+test('a 409 for an earlier vote reloads the case and shows the stored vote', async () => {
+  vi.mocked(castVote).mockRejectedValue(new ApiError(409, 'failed', 'You have already voted'));
+  const { events } = await setup(juror1);
+  vi.mocked(getCase).mockResolvedValue(withVotes(open, [0, null, null]));
+  await events.click(screen.getByRole('radio', { name: 'Seller' }));
+  await events.click(castButton()!);
+  const vote = screen.getByRole('region', { name: 'Your vote' });
+  expect(await within(vote).findByRole('alert')).toHaveTextContent('You have already voted');
+  expect(within(vote).getByText('You voted: Buyer')).toBeInTheDocument();
+  expect(castButton()).toBeNull();
+  expect(getCase).toHaveBeenCalledTimes(2);
+  expect(jurorItems()[0]).toHaveTextContent(/Voted/);
+});
+
+test('a 409 after the deadline reloads the case and shows it resolved', async () => {
+  vi.mocked(castVote).mockRejectedValue(new ApiError(409, 'failed', 'The voting deadline has passed'));
+  const { events } = await setup(juror1);
+  vi.mocked(getCase).mockResolvedValue(withVotes(open, [null, null, null], { status: 'resolved', result: null }));
+  await events.click(screen.getByRole('radio', { name: 'Buyer' }));
+  await events.click(castButton()!);
+  expect(await screen.findByRole('alert')).toHaveTextContent('The voting deadline has passed');
+  expect(screen.getByRole('region', { name: 'Result' })).toHaveTextContent('Resolved: No majority');
+  expect(castButton()).toBeNull();
+  expect(jurorItems()[0]).toHaveTextContent('Did not vote');
+});
+
+test('a 409 keeps the form when reloading the case fails', async () => {
+  vi.mocked(castVote).mockRejectedValue(new ApiError(409, 'failed', 'You have already voted'));
+  const { events } = await setup(juror1);
+  vi.mocked(getCase).mockRejectedValue(new ApiError(500, 'failed'));
+  await events.click(screen.getByRole('radio', { name: 'Buyer' }));
+  await events.click(castButton()!);
+  expect(await screen.findByRole('alert')).toHaveTextContent('You have already voted');
   expect(castButton()).toBeEnabled();
 });
 
@@ -113,6 +150,8 @@ test('a resolved case shows the result and every juror vote', async () => {
   vi.mocked(getCase).mockResolvedValue(withVotes(open, [0, 1, null], { status: 'resolved', result: 'Buyer' }));
   await setup(owner);
   expect(screen.getByRole('region', { name: 'Result' })).toHaveTextContent('Resolved: Buyer');
+  // Deadlines no longer matter once resolved.
+  for (const item of jurorItems()) expect(item).not.toHaveTextContent('Vote by');
   expect(jurorItems().map((item) => item.textContent)).toEqual([
     expect.stringMatching(/Juror 1.*Voted Buyer/),
     expect.stringMatching(/Juror 4.*Voted Seller/),
