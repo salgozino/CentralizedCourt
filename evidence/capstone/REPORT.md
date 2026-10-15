@@ -3,7 +3,7 @@
 Evidence that the held-back feature went from a fresh brief to an accepted change. Each section is filled and
 committed when its step ends; `git log -p evidence/capstone/REPORT.md` shows the order.
 
-Branch `feat/capstone-day5` from `master` `03a2be7`, worktree `../CentralizedCourt-capstone`.
+Branch `feat/capstone-day5` from `master` `4457a20` (rebased after PR #3), worktree `../CentralizedCourt-capstone`.
 
 Other files here: `reviewer-prompt.md` (committed before launching the reviewer), `reviewer-pass1.md` and
 `reviewer-pass2.md` (verbatim reviewer output), `checks/` (raw output from `scripts/capture.sh`), `review/`

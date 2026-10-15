@@ -66,7 +66,7 @@ Quota: copy the usage/cost shown by the harness when the task ends.
 ### T5 — Day 5 capstone: held-back feature
 - Date:
 - Branch: `feat/capstone-day5` (worktree `../CentralizedCourt-capstone`)
-- Starting commit: `03a2be7` (master)
+- Starting commit: `4457a20` (master, after PR #3)
 - Evidence: `evidence/capstone/` (narrative in `REPORT.md`)
 - Acceptance criteria: (`REPORT.md` sections 1–2)
 - Model / harness / effort (implementer):
