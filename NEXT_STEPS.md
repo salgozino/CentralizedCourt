@@ -96,7 +96,7 @@ be able to resume from here.
 - Evidence: red commit `7c532d1`; backend red run had 8 failures. The contract red run included expected draw failures, but cases contract compilation was blocked by an unsupported helper option; that test option was corrected during green implementation.
 - Checks: `make test` passes (161 backend, 94 frontend, 70 contract); automated HTTP tests cover owner/admin/assigned vs unrelated creator/juror/user, anonymous, privacy and panel ordering. Live curl skill verification passed against `http://localhost:8001` using `/tmp/backend-w1.log` after the user applied the original name migration: owner/admin/assigned reads, hidden reads, no-CSRF reads, draw guard precedence, owner/admin draws, panel privacy/order and deadlines. Fixtures #1/#2 were created. That run preceded the NOT NULL change and showed null names in old fixtures; rerun after resetting/reseeding to verify live non-null names.
 
-## Slice 4: vote + resolve (branch `feat/vote-resolve`, not merged)
+## Slice 4: vote + resolve (merged to master in `a32f9a1`, PR #1)
 
 - Rules (user decisions, 2026-10-15): a `voting` case resolves when every panel juror voted or the clock reached every
   juror's deadline. The winner needs strictly more than half of the cast votes; a split, a tie or no votes resolve
@@ -120,8 +120,10 @@ be able to resume from here.
 
 ## Next
 
-1. Slice 4: manual browser check done by the user (2026-10-15). Next: merge `feat/vote-resolve` into master.
-2. All acceptance rows are ✅ except the slice 1 manual browser check (🟡).
+1. MVP complete (2026-10-15): every row in `ACCEPTANCE.md` is ✅, the acceptance check runs in `make test`, and slice 4
+   was validated manually and merged (PR #1). Next work is outside the MVP: the items below, the open product
+   decisions, and the stretch goals in `EXPERIMENT.md`.
+2. No browser e2e checks the per-role home screen yet (covered by mocked `HomePage.test.tsx` and manual checks).
 3. Manual juror picker UI remains pending (not an acceptance criterion).
 4. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 5. The vote form reads the clock once per page load; a deadline crossed while the page is open is rejected by the
