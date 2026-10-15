@@ -172,7 +172,7 @@ Process deviations:
 |----------|--------|----------|
 | Did any session see the brief before section 1 was committed? | No | Section 1; brief opened 14:20:08, committed in `bba7752` 14:20:18 |
 | Did the reviewer see `evidence/`, `odd/`, `.atl/` or commit messages during pass 1? | No | `contamination-pre.txt`: all four absent; pass 1 states it did not read the git log, commit messages or `evidence/` |
-| Did the reviewer share memory with the implementer? | No | Different providers and harnesses (Codex vs Claude Code), separate worktrees |
+| Did the reviewer share memory with the implementer? | No | Different providers and harnesses (Codex vs Claude Code), separate worktrees; Engram memory was disabled for the reviewer's Claude Code session, so it was also isolated from other Claude Code sessions |
 | Did the reviewer see my check outputs before running its own? | No | `evidence/` (including `checks/`) was deleted in its worktree; its own log starts at 16:24:14 |
 | Was the candidate unchanged between pass 1 and pass 2? | Yes | Reviewer `HEAD` `5366bc7` in both contamination runs; the fix commits landed in the implementer worktree only |
 | Did I edit the prompt after seeing a reviewer result? | No | `reviewer-prompt.md` last changed in `008d347`, before the reviewer started |
