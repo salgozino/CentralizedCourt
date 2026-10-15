@@ -1,17 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@kleros/ui-components-library';
-import { ApiError, drawJurors, type CaseDetail, type DrawResult, type DrawnJuror, type ValidationIssue } from '../api';
+import { ApiError, drawJurors, type CaseDetail, type DrawResult, type DrawnJuror } from '../api';
+import { errorMessage, jurorCount } from '../cases/presentation';
+import ManualJurorPicker from './ManualJurorPicker';
 
 const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
-const GENERIC_ERROR = 'Could not draw jurors. Please try again.';
-
-/** The backend `detail` is a message string, or a list of validation issues on 422. */
-function drawErrorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return GENERIC_ERROR;
-  if (typeof error.detail === 'string') return error.detail;
-  if (Array.isArray(error.detail)) return (error.detail as ValidationIssue[]).map((issue) => issue.msg).join(' ');
-  return GENERIC_ERROR;
-}
 
 export default function DrawJurorsPanel({
   value: c,
@@ -29,13 +22,15 @@ export default function DrawJurorsPanel({
 
   if (c.jurors.length > 0) return <DrawnJurorsList value={c} />;
   if (c.status !== 'awaiting_jurors') return null;
-  if (c.selectionMethod === 'manual')
+  if (c.selectionMethod === 'manual') {
+    if (canDraw) return <ManualJurorPicker value={c} onDrawn={onDrawn} onUnauthorized={onUnauthorized} />;
     return (
       <section className={card}>
         <h2 className="mb-4 text-lg font-semibold">Jurors</h2>
-        <p>Manual juror assignment is not available yet.</p>
+        <p>This case is waiting for the creator to assign {jurorCount(c.panelSize)}.</p>
       </section>
     );
+  }
 
   const draw = async () => {
     setDrawing(true);
@@ -45,7 +40,7 @@ export default function DrawJurorsPanel({
       onDrawn(result);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) onUnauthorized();
-      else setError(drawErrorMessage(e));
+      else setError(errorMessage(e, 'Could not draw jurors. Please try again.'));
     } finally {
       setDrawing(false);
     }
@@ -54,7 +49,7 @@ export default function DrawJurorsPanel({
   return (
     <section className={`${card} flex flex-col items-start gap-4`}>
       <h2 className="text-lg font-semibold">Jurors</h2>
-      <p>This case is waiting for a random draw of {c.panelSize} jurors.</p>
+      <p>This case is waiting for a random draw of {jurorCount(c.panelSize)}.</p>
       {error && (
         <p role="alert" className="text-sm text-klerosUIComponentsError">
           {error}

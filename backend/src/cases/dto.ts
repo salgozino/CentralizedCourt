@@ -99,6 +99,12 @@ export const toJurorOut = (j: CaseJuror, revealVote: boolean): JurorOut => ({
   outcomeIndex: revealVote ? j.outcomeIndex : null,
 });
 
+/** A juror who can be picked for a manual panel: id and name only, never an email. */
+export interface EligibleJurorOut {
+  jurorId: number;
+  name: string;
+}
+
 export interface DrawOut {
   case: CaseDetailOut;
   jurors: JurorOut[];

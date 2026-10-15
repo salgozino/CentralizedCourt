@@ -1,16 +1,9 @@
 import { useState } from 'react';
 import { Button, Radio } from '@kleros/ui-components-library';
-import { ApiError, castVote, getCase, type CaseDetail, type User, type ValidationIssue } from '../api';
+import { ApiError, castVote, getCase, type CaseDetail, type User } from '../api';
+import { errorMessage } from '../cases/presentation';
 
 const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUIComponentsWhiteBackground p-6';
-const GENERIC_ERROR = 'Could not cast your vote. Please try again.';
-
-function voteErrorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return GENERIC_ERROR;
-  if (typeof error.detail === 'string') return error.detail;
-  if (Array.isArray(error.detail)) return (error.detail as ValidationIssue[]).map((issue) => issue.msg).join(' ');
-  return GENERIC_ERROR;
-}
 
 /**
  * The signed-in juror's own vote while the case is voting; nothing for readers outside the panel. A 409 means the
@@ -45,7 +38,7 @@ export default function VotePanel({
       onVoted(await castVote(c.id, Number(choice)));
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return onUnauthorized();
-      setError(voteErrorMessage(e));
+      setError(errorMessage(e, 'Could not cast your vote. Please try again.'));
       if (e instanceof ApiError && e.status === 409) {
         try {
           onVoted(await getCase(String(c.id)));

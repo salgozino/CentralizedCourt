@@ -1,5 +1,16 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { ApiError, castVote, createCase, drawJurors, getCase, getMe, listCases, setUserRoles, verifyCode } from './api';
+import {
+  ApiError,
+  castVote,
+  createCase,
+  drawJurors,
+  getCase,
+  getMe,
+  listCases,
+  listEligibleJurors,
+  setUserRoles,
+  verifyCode,
+} from './api';
 
 const fetchMock = vi.fn();
 
@@ -126,6 +137,24 @@ test('drawJurors returns the case and the drawn jurors', async () => {
   };
   fetchMock.mockResolvedValue(json(200, result));
   await expect(drawJurors(7)).resolves.toEqual(result);
+});
+
+test('drawJurors sends the picked jurorIds for a manual draw', async () => {
+  fetchMock.mockResolvedValue(json(200, { case: { id: 7 }, jurors: [] }));
+  await drawJurors(7, [8, 5, 6]);
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe('/api/cases/7/draw');
+  expect(new Headers(init.headers).get('X-CSRFToken')).toBe('abc123');
+  expect(JSON.parse(init.body)).toEqual({ jurorIds: [8, 5, 6] });
+});
+
+test('listEligibleJurors GETs the pool of the case', async () => {
+  const pool = [{ jurorId: 4, name: 'Juror 1' }];
+  fetchMock.mockResolvedValue(json(200, pool));
+  await expect(listEligibleJurors(7)).resolves.toEqual(pool);
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe('/api/cases/7/eligible-jurors');
+  expect(init.method).toBe('GET');
 });
 
 test('castVote POSTs the outcome index with CSRF and returns the updated case', async () => {

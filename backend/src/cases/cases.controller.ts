@@ -20,7 +20,17 @@ import { UnprocessableException } from '../http/errors';
 import { ZodBodyPipe } from '../http/validation';
 
 import { CreatorGuard } from './creator.guard';
-import { CaseDetailOut, CaseOut, CreateCaseIn, DrawIn, DrawOut, VoteIn, toCaseOut, toJurorOut } from './dto';
+import {
+  CaseDetailOut,
+  CaseOut,
+  CreateCaseIn,
+  DrawIn,
+  DrawOut,
+  EligibleJurorOut,
+  VoteIn,
+  toCaseOut,
+  toJurorOut,
+} from './dto';
 import { JuryService } from './jury.service';
 import { VotingService } from './voting.service';
 
@@ -125,18 +135,30 @@ export class CasesController {
     return toCaseOut(await this.cases.findOneByOrFail({ id: created.id }));
   }
 
+  /** The pool a manual panel is picked from. Same permission as the draw itself; reads need no CSRF. */
+  @Get(':id/eligible-jurors')
+  async eligibleJurors(@Req() req: AuthenticatedRequest, @Param('id') rawId: string): Promise<EligibleJurorOut[]> {
+    await this.drawableCase(req.user, rawId);
+    return (await this.jury.eligible()).map((u) => ({ jurorId: u.id, name: u.name }));
+  }
+
   /**
-   * Ownership is checked before the body (403 before 422). Missing cases are 404 for everyone; an existing case
-   * owned by someone else is 403, as the draw spec requires.
+   * Missing cases are 404 for everyone; an existing case owned by someone else is 403, as the draw spec requires.
+   * Checked before the body (403 before 422).
    */
+  private async drawableCase(user: User, rawId: string): Promise<Case> {
+    const row = await this.cases.findOneBy({ id: parseId(rawId) });
+    if (!row) throw new NotFoundException();
+    if (row.creatorId !== user.id && !user.isAdmin) {
+      throw new ForbiddenException('Only the case creator or an admin can draw jurors');
+    }
+    return row;
+  }
+
   @Post(':id/draw')
   @HttpCode(200)
   async draw(@Req() req: AuthenticatedRequest, @Param('id') rawId: string, @Body() body: unknown): Promise<DrawOut> {
-    const row = await this.cases.findOneBy({ id: parseId(rawId) });
-    if (!row) throw new NotFoundException();
-    if (row.creatorId !== req.user.id && !req.user.isAdmin) {
-      throw new ForbiddenException('Only the case creator or an admin can draw jurors');
-    }
+    const row = await this.drawableCase(req.user, rawId);
     // A bodiless POST leaves req.body undefined; for a random draw that is the normal call.
     const { jurorIds } = new ZodBodyPipe(DrawIn).transform(body ?? {});
     const seated = await this.jury.seat(row.id, jurorIds);
