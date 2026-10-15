@@ -1,0 +1,90 @@
+cd backend && yarn test
+
+Test Suites: 18 passed, 18 total
+Tests:       234 passed, 234 total
+Snapshots:   0 total
+Time:        20.679 s
+Ran all test suites.
+cd frontend && yarn test
+
+ RUN  v5.0.3 /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend
+
+ ❯ src/cases/draft.test.ts (21 tests | 1 failed) 33ms
+   × toNewCase trims text and converts the window to seconds 17ms
+ ❯ src/components/CasesSection.test.tsx (15 tests | 1 failed) 8029ms
+   × sends the chosen window, panel size and selection method 825ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/cases/draft.test.ts > toNewCase trims text and converts the window to seconds
+AssertionError: expected { title: 'T', …(6) } to deeply equal { title: 'T', …(5) }
+
+- Expected
++ Received
+
+@@ -3,9 +3,10 @@
+    "outcomes": [
+      "A",
+      "B",
+    ],
+    "panelSize": 5,
++   "refusalWindowSeconds": 86400,
+    "selectionMethod": "manual",
+    "title": "T",
+    "voteWindowSeconds": 129600,
+  }
+
+ ❯ src/cases/draft.test.ts:99:28
+     97|     selectionMethod: 'manual' as const,
+     98|   };
+     99|   expect(toNewCase(draft)).toEqual({
+       |                            ^
+    100|     title: 'T',
+    101|     description: 'The item never arrived.',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/components/CasesSection.test.tsx > sends the chosen window, panel size and selection method
+AssertionError: expected "vi.fn()" to be called with arguments: [ { title: 'Refund dispute', …(5) } ]
+
+Received:
+
+  1st vi.fn() call:
+
+@@ -4,10 +4,11 @@
+      "outcomes": [
+        "Refund",
+        "No refund",
+      ],
+      "panelSize": 5,
++     "refusalWindowSeconds": 86400,
+      "selectionMethod": "manual",
+      "title": "Refund dispute",
+      "voteWindowSeconds": 129600,
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/components/CasesSection.test.tsx:212:22
+    210|   await user.click(submitButton());
+    211|
+    212|   expect(createCase).toHaveBeenCalledWith({
+       |                      ^
+    213|     ...expectedInput,
+    214|     voteWindowSeconds: 129_600,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 11 passed (13)
+      Tests  2 failed | 126 passed (128)
+   Start at  15:26:07
+   Duration  13.53s (environment 33%, transform 27%, tests 25%, import 9%, setup 5%)
+
+  Transform  transforming modules took 19.93s · 27% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+make: *** [Makefile:24: test] Error 1

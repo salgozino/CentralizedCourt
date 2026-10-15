@@ -1,0 +1,5 @@
+yarn prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+yarn eslint --max-warnings 0 backend contract-tests e2e
+cd frontend && yarn lint

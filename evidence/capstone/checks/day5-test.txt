@@ -1,0 +1,1069 @@
+cd backend && yarn test
+FAIL test/migrations.spec.ts (10.02 s)
+  ● migrations › adds nullable vote columns to case_jurors and reverts them cleanly
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 2
+
+    @@ -3,6 +3,8 @@
+        "caseId",
+        "userId",
+        "position",
+        "drawnAt",
+        "deadline",
+    +   "outcomeIndex",
+    +   "votedAt",
+      ]
+
+      40 |     await dataSource.undoLastMigration();
+      41 |     const reverted = (await dataSource.query('PRAGMA table_info(case_jurors)')).map((c: { name: string }) => c.name);
+    > 42 |     expect(reverted).toEqual(['id', 'caseId', 'userId', 'position', 'drawnAt', 'deadline']);
+         |                      ^
+      43 |     await dataSource.runMigrations();
+      44 |   });
+      45 |
+
+      at Object.<anonymous> (test/migrations.spec.ts:42:22)
+
+  ● migrations › reverts the case_jurors and cases migrations cleanly
+
+    expect(received).not.toContainEqual(expected) // deep equality
+
+    Expected value: not ObjectContaining {"name": "name"}
+    Received array:     [{"cid": 0, "dflt_value": null, "name": "id", "notnull": 1, "pk": 1, "type": "INTEGER"}, {"cid": 1, "dflt_value": null, "name": "email", "notnull": 1, "pk": 0, "type": "varchar(254)"}, {"cid": 2, "dflt_value": "0", "name": "isAdmin", "notnull": 1, "pk": 0, "type": "boolean"}, {"cid": 3, "dflt_value": "0", "name": "isCreator", "notnull": 1, "pk": 0, "type": "boolean"}, {"cid": 4, "dflt_value": "0", "name": "isJuror", "notnull": 1, "pk": 0, "type": "boolean"}, {"cid": 5, "dflt_value": "1", "name": "isActive", "notnull": 1, "pk": 0, "type": "boolean"}, {"cid": 6, "dflt_value": "datetime('now')", "name": "dateJoined", "notnull": 1, "pk": 0, "type": "datetime"}, {"cid": 7, "dflt_value": null, "name": "lastLogin", "notnull": 0, "pk": 0, "type": "datetime"}, {"cid": 8, "dflt_value": null, "name": "name", "notnull": 1, "pk": 0, "type": "varchar(200)"}]
+
+      149 |     await ds.undoLastMigration();
+      150 |     await ds.undoLastMigration();
+    > 151 |     expect(await ds.query('PRAGMA table_info(users)')).not.toContainEqual(expect.objectContaining({ name: 'name' }));
+          |                                                            ^
+      152 |     await ds.undoLastMigration();
+      153 |     expect(await tableNames()).not.toContain('case_jurors');
+      154 |     expect(await tableNames()).toContain('cases');
+
+      at Object.<anonymous> (test/migrations.spec.ts:151:60)
+
+FAIL test/cases-jurors-read.spec.ts (11.576 s)
+  ● assigned case reads over HTTP › returns an empty panel before drawing, without changing the list DTO
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      33 |     secondId = (await owner.post('/api/cases', payload)).body.id;
+      34 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+    > 35 |     expect(draw.status).toBe(200);
+         |                         ^
+      36 |     panel = draw.body.jurors;
+      37 |   });
+      38 |   afterAll(() => booted.close());
+
+      at Object.<anonymous> (test/cases-jurors-read.spec.ts:35:25)
+
+  ● assigned case reads over HTTP › returns the full private-safe panel in position order to owner, admin and assigned jurors
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      33 |     secondId = (await owner.post('/api/cases', payload)).body.id;
+      34 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+    > 35 |     expect(draw.status).toBe(200);
+         |                         ^
+      36 |     panel = draw.body.jurors;
+      37 |   });
+      38 |   afterAll(() => booted.close());
+
+      at Object.<anonymous> (test/cases-jurors-read.spec.ts:35:25)
+
+  ● assigned case reads over HTTP › lists assigned cases only, without exposing panels
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      33 |     secondId = (await owner.post('/api/cases', payload)).body.id;
+      34 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+    > 35 |     expect(draw.status).toBe(200);
+         |                         ^
+      36 |     panel = draw.body.jurors;
+      37 |   });
+      38 |   afterAll(() => booted.close());
+
+      at Object.<anonymous> (test/cases-jurors-read.spec.ts:35:25)
+
+  ● assigned case reads over HTTP › hides assigned cases from unrelated creator2@example.com
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      33 |     secondId = (await owner.post('/api/cases', payload)).body.id;
+      34 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+    > 35 |     expect(draw.status).toBe(200);
+         |                         ^
+      36 |     panel = draw.body.jurors;
+      37 |   });
+      38 |   afterAll(() => booted.close());
+
+      at Object.<anonymous> (test/cases-jurors-read.spec.ts:35:25)
+
+  ● assigned case reads over HTTP › hides assigned cases from unrelated juror4@example.com
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      33 |     secondId = (await owner.post('/api/cases', payload)).body.id;
+      34 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+    > 35 |     expect(draw.status).toBe(200);
+         |                         ^
+      36 |     panel = draw.body.jurors;
+      37 |   });
+      38 |   afterAll(() => booted.close());
+
+      at Object.<anonymous> (test/cases-jurors-read.spec.ts:35:25)
+
+  ● assigned case reads over HTTP › hides assigned cases from unrelated user@example.com
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      33 |     secondId = (await owner.post('/api/cases', payload)).body.id;
+      34 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+    > 35 |     expect(draw.status).toBe(200);
+         |                         ^
+      36 |     panel = draw.body.jurors;
+      37 |   });
+      38 |   afterAll(() => booted.close());
+
+      at Object.<anonymous> (test/cases-jurors-read.spec.ts:35:25)
+
+  ● assigned case reads over HTTP › requires authentication even after assignment
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      33 |     secondId = (await owner.post('/api/cases', payload)).body.id;
+      34 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+    > 35 |     expect(draw.status).toBe(200);
+         |                         ^
+      36 |     panel = draw.body.jurors;
+      37 |   });
+      38 |   afterAll(() => booted.close());
+
+      at Object.<anonymous> (test/cases-jurors-read.spec.ts:35:25)
+
+  ● assigned case reads over HTTP › does not duplicate an owned and assigned case and keeps list ordering
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      33 |     secondId = (await owner.post('/api/cases', payload)).body.id;
+      34 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+    > 35 |     expect(draw.status).toBe(200);
+         |                         ^
+      36 |     panel = draw.body.jurors;
+      37 |   });
+      38 |   afterAll(() => booted.close());
+
+      at Object.<anonymous> (test/cases-jurors-read.spec.ts:35:25)
+
+FAIL test/admin-juror-removal.spec.ts (12.428 s)
+  ● removing the juror role › answers 409 and changes nothing while the juror is on a case that is voting
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      32 |     });
+      33 |     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
+    > 34 |     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
+         |                                                                                           ^
+      35 |     return created.body.id;
+      36 |   };
+      37 |   const vote = (name: string, id: number, outcomeIndex = 0) =>
+
+      at drawnCase (test/admin-juror-removal.spec.ts:34:91)
+      at Object.<anonymous> (test/admin-juror-removal.spec.ts:59:5)
+
+  ● removing the juror role › still answers 409 after the juror voted, while the case is voting
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      32 |     });
+      33 |     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
+    > 34 |     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
+         |                                                                                           ^
+      35 |     return created.body.id;
+      36 |   };
+      37 |   const vote = (name: string, id: number, outcomeIndex = 0) =>
+
+      at drawnCase (test/admin-juror-removal.spec.ts:34:91)
+      at Object.<anonymous> (test/admin-juror-removal.spec.ts:69:16)
+
+  ● removing the juror role › lets the admin add roles to a juror on an active case, keeping the juror role
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      32 |     });
+      33 |     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
+    > 34 |     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
+         |                                                                                           ^
+      35 |     return created.body.id;
+      36 |   };
+      37 |   const vote = (name: string, id: number, outcomeIndex = 0) =>
+
+      at drawnCase (test/admin-juror-removal.spec.ts:34:91)
+      at Object.<anonymous> (test/admin-juror-removal.spec.ts:77:5)
+
+  ● removing the juror role › removes the juror role once every active case is resolved
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      32 |     });
+      33 |     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
+    > 34 |     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
+         |                                                                                           ^
+      35 |     return created.body.id;
+      36 |   };
+      37 |   const vote = (name: string, id: number, outcomeIndex = 0) =>
+
+      at drawnCase (test/admin-juror-removal.spec.ts:34:91)
+      at Object.<anonymous> (test/admin-juror-removal.spec.ts:84:16)
+
+  ● removing the juror role › settles a case whose deadline passed before checking, so it does not block
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      32 |     });
+      33 |     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
+    > 34 |     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
+         |                                                                                           ^
+      35 |     return created.body.id;
+      36 |   };
+      37 |   const vote = (name: string, id: number, outcomeIndex = 0) =>
+
+      at drawnCase (test/admin-juror-removal.spec.ts:34:91)
+      at Object.<anonymous> (test/admin-juror-removal.spec.ts:93:16)
+
+  ● removing the juror role › removes the juror role from a juror who was never drawn
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      32 |     });
+      33 |     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
+    > 34 |     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
+         |                                                                                           ^
+      35 |     return created.body.id;
+      36 |   };
+      37 |   const vote = (name: string, id: number, outcomeIndex = 0) =>
+
+      at drawnCase (test/admin-juror-removal.spec.ts:34:91)
+      at Object.<anonymous> (test/admin-juror-removal.spec.ts:102:5)
+
+  ● removing the juror role › does not restrict removing the creator role from a creator who is also an active juror
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      32 |     });
+      33 |     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
+    > 34 |     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
+         |                                                                                           ^
+      35 |     return created.body.id;
+      36 |   };
+      37 |   const vote = (name: string, id: number, outcomeIndex = 0) =>
+
+      at drawnCase (test/admin-juror-removal.spec.ts:34:91)
+      at Object.<anonymous> (test/admin-juror-removal.spec.ts:109:5)
+
+FAIL test/eligible-jurors.spec.ts (12.507 s)
+  ● eligible jurors over HTTP › forbids creator2@example.com, who cannot draw on this case
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      47 |     async (email) => {
+      48 |       const res = await (await new Browser(booted).login(email)).get(url(caseId));
+    > 49 |       expect(res.status).toBe(403);
+         |                          ^
+      50 |       expect(res.body).toEqual({ detail: 'Only the case creator or an admin can draw jurors' });
+      51 |     },
+      52 |   );
+
+      at test/eligible-jurors.spec.ts:49:26
+
+  ● eligible jurors over HTTP › forbids juror1@example.com, who cannot draw on this case
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      47 |     async (email) => {
+      48 |       const res = await (await new Browser(booted).login(email)).get(url(caseId));
+    > 49 |       expect(res.status).toBe(403);
+         |                          ^
+      50 |       expect(res.body).toEqual({ detail: 'Only the case creator or an admin can draw jurors' });
+      51 |     },
+      52 |   );
+
+      at test/eligible-jurors.spec.ts:49:26
+
+  ● eligible jurors over HTTP › forbids user@example.com, who cannot draw on this case
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      47 |     async (email) => {
+      48 |       const res = await (await new Browser(booted).login(email)).get(url(caseId));
+    > 49 |       expect(res.status).toBe(403);
+         |                          ^
+      50 |       expect(res.body).toEqual({ detail: 'Only the case creator or an admin can draw jurors' });
+      51 |     },
+      52 |   );
+
+      at test/eligible-jurors.spec.ts:49:26
+
+  ● eligible jurors over HTTP › lists every eligible juror by id, name only, for the owner
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      54 |   it.each(['owner', 'admin'])('lists every eligible juror by id, name only, for the %s', async (who) => {
+      55 |     const res = await (who === 'owner' ? owner : admin).get(url(caseId), { csrf: false, origin: null });
+    > 56 |     expect(res.status).toBe(200);
+         |                        ^
+      57 |     expect(res.body).toEqual(await seededJurors());
+      58 |     expect(res.body.map((j: { name: string }) => j.name)).toEqual([
+      59 |       'Juror 1',
+
+      at test/eligible-jurors.spec.ts:56:24
+
+  ● eligible jurors over HTTP › lists every eligible juror by id, name only, for the admin
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      54 |   it.each(['owner', 'admin'])('lists every eligible juror by id, name only, for the %s', async (who) => {
+      55 |     const res = await (who === 'owner' ? owner : admin).get(url(caseId), { csrf: false, origin: null });
+    > 56 |     expect(res.status).toBe(200);
+         |                        ^
+      57 |     expect(res.body).toEqual(await seededJurors());
+      58 |     expect(res.body.map((j: { name: string }) => j.name)).toEqual([
+      59 |       'Juror 1',
+
+      at test/eligible-jurors.spec.ts:56:24
+
+  ● eligible jurors over HTTP › leaves out admins with the juror flag, inactive jurors and users without the juror role
+
+    TypeError: (intermediate value).body.map is not a function
+
+      73 |     await users().update(juror2.id, { isActive: false });
+      74 |     try {
+    > 75 |       const names = (await owner.get(url(caseId))).body.map((j: { name: string }) => j.name);
+         |                                                         ^
+      76 |       expect(names).toEqual(['Juror 1', 'Juror 3', 'Juror 4', 'Juror 5']);
+      77 |     } finally {
+      78 |       await users().update(adminUser.id, { isJuror: false });
+
+      at Object.<anonymous> (test/eligible-jurors.spec.ts:75:57)
+
+  ● eligible jurors over HTTP › lists jurors that the manual draw then accepts, in the chosen order
+
+    TypeError: Cannot read properties of undefined (reading 'jurorId')
+
+      83 |   it('lists jurors that the manual draw then accepts, in the chosen order', async () => {
+      84 |     const listed = (await owner.get(url(caseId))).body as { jurorId: number }[];
+    > 85 |     const jurorIds = [listed[3].jurorId, listed[0].jurorId, listed[2].jurorId];
+         |                                 ^
+      86 |     const draw = await owner.post(`/api/cases/${caseId}/draw`, { jurorIds });
+      87 |     expect(draw.status).toBe(200);
+      88 |     expect(draw.body.jurors.map((j: { jurorId: number }) => j.jurorId)).toEqual(jurorIds);
+
+      at Object.<anonymous> (test/eligible-jurors.spec.ts:85:33)
+
+FAIL test/cases-read.spec.ts (12.517 s)
+  ● case visibility over HTTP › lists only owned cases and returns the complete public DTO
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+    @@ -4,10 +4,11 @@
+        "description",
+        "id",
+        "jurors",
+        "outcomes",
+        "panelSize",
+    +   "refusalWindowSeconds",
+        "result",
+        "selectionMethod",
+        "status",
+        "title",
+        "updatedAt",
+
+      48 |     expect(detail.status).toBe(200);
+      49 |     expect(detail.body).toEqual({ ...res.body[1], jurors: [] });
+    > 50 |     expect(Object.keys(detail.body).sort()).toEqual(
+         |                                             ^
+      51 |       [
+      52 |         'id',
+      53 |         'creatorId',
+
+      at Object.<anonymous> (test/cases-read.spec.ts:50:45)
+
+FAIL test/vote.spec.ts (12.821 s)
+  ● voting and resolution over HTTP › guards › requires a session and CSRF
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:76:18)
+
+  ● voting and resolution over HTTP › guards › returns 404 to creator2@example.com, who cannot read the case
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:95:20
+
+  ● voting and resolution over HTTP › guards › returns 404 to juror4@example.com, who cannot read the case
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:95:20
+
+  ● voting and resolution over HTTP › guards › returns 404 to user@example.com, who cannot read the case
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:95:20
+
+  ● voting and resolution over HTTP › guards › forbids the owner, who can read but is not on the panel
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:105:18
+
+  ● voting and resolution over HTTP › guards › forbids the admin, who can read but is not on the panel
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:105:18
+
+  ● voting and resolution over HTTP › guards › rejects an empty body with 422 and stores nothing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:119:18
+
+  ● voting and resolution over HTTP › guards › rejects a string index with 422 and stores nothing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:119:18
+
+  ● voting and resolution over HTTP › guards › rejects a fractional index with 422 and stores nothing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:119:18
+
+  ● voting and resolution over HTTP › guards › rejects a negative index with 422 and stores nothing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:119:18
+
+  ● voting and resolution over HTTP › guards › rejects an unknown field with 422 and stores nothing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at test/vote.spec.ts:119:18
+
+  ● voting and resolution over HTTP › guards › rejects an index outside the outcomes with 422
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:126:18)
+
+  ● voting and resolution over HTTP › guards › lets a drawn juror vote after losing the juror role: assignment grants the vote
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:134:18)
+
+  ● voting and resolution over HTTP › casting a vote › stores the vote and shows only who voted; each juror sees their own choice
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:146:18)
+
+  ● voting and resolution over HTTP › casting a vote › accepts a vote 1 ms before the deadline and rejects one at the deadline
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:169:18)
+
+  ● voting and resolution over HTTP › casting a vote › treats the vote as final: a second vote answers 409 and changes nothing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:180:18)
+
+  ● voting and resolution over HTTP › casting a vote › rejects votes on a resolved case
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:189:18)
+
+  ● voting and resolution over HTTP › resolution › waits for every juror: 2 of 3 votes keep the case voting before the deadline
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:217:18)
+
+  ● voting and resolution over HTTP › resolution › resolves "A" when 2 of 3 jurors vote A before the deadline and the deadline passes
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:225:18)
+
+  ● voting and resolution over HTTP › resolution › resolves as soon as every juror voted and publishes every vote
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:243:18)
+
+  ● voting and resolution over HTTP › resolution › counts the majority over cast votes: one vote of three resolves at the deadline
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:258:18)
+
+  ● voting and resolution over HTTP › resolution › resolves without a result when the cast votes are split
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:265:18)
+
+  ● voting and resolution over HTTP › resolution › resolves without a result on a tie of cast votes at the deadline
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:273:18)
+
+  ● voting and resolution over HTTP › resolution › resolves without a result when nobody voted, also through the case list
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      35 |       selectionMethod: 'manual',
+      36 |     });
+    > 37 |     expect(created.status).toBe(201);
+         |                            ^
+      38 |     const draw = await owner.post(`/api/cases/${created.body.id}/draw`, {
+      39 |       jurorIds: [ids.juror1, ids.juror2, ids.juror3],
+      40 |     });
+
+      at drawnCase (test/vote.spec.ts:37:28)
+      at Object.<anonymous> (test/vote.spec.ts:281:18)
+
+FAIL test/draw.spec.ts (13.212 s)
+  ● jury draw over HTTP › manual assignment › assigns exactly the given jurors
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      38 |   const createCase = async (browser: Browser, extra: Record<string, unknown> = {}): Promise<number> => {
+      39 |     const res = await browser.post('/api/cases', { ...payload, ...extra });
+    > 40 |     expect(res.status).toBe(201);
+         |                        ^
+      41 |     return res.body.id;
+      42 |   };
+      43 |   const idOf = async (email: string) => (await users().findOneByOrFail({ email })).id;
+
+      at createCase (test/draw.spec.ts:40:24)
+      at Object.<anonymous> (test/draw.spec.ts:156:18)
+
+  ● jury draw over HTTP › manual assignment › rejects a plain user with 422 and keeps the case awaiting jurors
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      38 |   const createCase = async (browser: Browser, extra: Record<string, unknown> = {}): Promise<number> => {
+      39 |     const res = await browser.post('/api/cases', { ...payload, ...extra });
+    > 40 |     expect(res.status).toBe(201);
+         |                        ^
+      41 |     return res.body.id;
+      42 |   };
+      43 |   const idOf = async (email: string) => (await users().findOneByOrFail({ email })).id;
+
+      at createCase (test/draw.spec.ts:40:24)
+      at test/draw.spec.ts:174:18
+
+  ● jury draw over HTTP › manual assignment › rejects a creator with 422 and keeps the case awaiting jurors
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      38 |   const createCase = async (browser: Browser, extra: Record<string, unknown> = {}): Promise<number> => {
+      39 |     const res = await browser.post('/api/cases', { ...payload, ...extra });
+    > 40 |     expect(res.status).toBe(201);
+         |                        ^
+      41 |     return res.body.id;
+      42 |   };
+      43 |   const idOf = async (email: string) => (await users().findOneByOrFail({ email })).id;
+
+      at createCase (test/draw.spec.ts:40:24)
+      at test/draw.spec.ts:174:18
+
+  ● jury draw over HTTP › manual assignment › rejects an admin even with the juror flag
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      38 |   const createCase = async (browser: Browser, extra: Record<string, unknown> = {}): Promise<number> => {
+      39 |     const res = await browser.post('/api/cases', { ...payload, ...extra });
+    > 40 |     expect(res.status).toBe(201);
+         |                        ^
+      41 |     return res.body.id;
+      42 |   };
+      43 |   const idOf = async (email: string) => (await users().findOneByOrFail({ email })).id;
+
+      at createCase (test/draw.spec.ts:40:24)
+      at Object.<anonymous> (test/draw.spec.ts:186:20)
+
+  ● jury draw over HTTP › manual assignment › rejects missing jurorIds with 422
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      38 |   const createCase = async (browser: Browser, extra: Record<string, unknown> = {}): Promise<number> => {
+      39 |     const res = await browser.post('/api/cases', { ...payload, ...extra });
+    > 40 |     expect(res.status).toBe(201);
+         |                        ^
+      41 |     return res.body.id;
+      42 |   };
+      43 |   const idOf = async (email: string) => (await users().findOneByOrFail({ email })).id;
+
+      at createCase (test/draw.spec.ts:40:24)
+      at test/draw.spec.ts:201:18
+
+  ● jury draw over HTTP › manual assignment › rejects too few jurorIds with 422
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      38 |   const createCase = async (browser: Browser, extra: Record<string, unknown> = {}): Promise<number> => {
+      39 |     const res = await browser.post('/api/cases', { ...payload, ...extra });
+    > 40 |     expect(res.status).toBe(201);
+         |                        ^
+      41 |     return res.body.id;
+      42 |   };
+      43 |   const idOf = async (email: string) => (await users().findOneByOrFail({ email })).id;
+
+      at createCase (test/draw.spec.ts:40:24)
+      at test/draw.spec.ts:201:18
+
+  ● jury draw over HTTP › manual assignment › rejects duplicated jurorIds with 422
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      38 |   const createCase = async (browser: Browser, extra: Record<string, unknown> = {}): Promise<number> => {
+      39 |     const res = await browser.post('/api/cases', { ...payload, ...extra });
+    > 40 |     expect(res.status).toBe(201);
+         |                        ^
+      41 |     return res.body.id;
+      42 |   };
+      43 |   const idOf = async (email: string) => (await users().findOneByOrFail({ email })).id;
+
+      at createCase (test/draw.spec.ts:40:24)
+      at test/draw.spec.ts:201:18
+
+FAIL test/cases.spec.ts (19.677 s)
+  ● create case over HTTP › creates a case for a creator with defaults and the initial status
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 1
+
+    @@ -6,10 +6,11 @@
+        "outcomes": Array [
+          "Refund",
+          "No refund",
+        ],
+        "panelSize": 3,
+    +   "refusalWindowSeconds": null,
+        "result": null,
+        "selectionMethod": "random",
+        "status": "awaiting_jurors",
+        "title": "Refund dispute",
+        "updatedAt": Any<String>,
+
+      23 |     const res = await (await as('creator1@example.com')).post('/api/cases', validCase);
+      24 |     expect(res.status).toBe(201);
+    > 25 |     expect(res.body).toEqual({
+         |                      ^
+      26 |       id: expect.any(Number),
+      27 |       creatorId: creator.id,
+      28 |       ...validCase,
+
+      at Object.<anonymous> (test/cases.spec.ts:25:22)
+
+  ● create case over HTTP › accepts an explicit panel size and selection method, and trims text
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 422
+
+      48 |       selectionMethod: 'manual',
+      49 |     });
+    > 50 |     expect(res.status).toBe(201);
+         |                        ^
+      51 |     expect(res.body).toMatchObject({ title: 'Padded title', outcomes: ['A', 'B', 'C'], panelSize: 5 });
+      52 |     expect(res.body.selectionMethod).toBe('manual');
+      53 |   });
+
+      at Object.<anonymous> (test/cases.spec.ts:50:24)
+
+Test Suites: 8 failed, 10 passed, 18 total
+Tests:       58 failed, 176 passed, 234 total
+Snapshots:   0 total
+Time:        20.775 s, estimated 21 s
+Ran all test suites.
+make: *** [Makefile:23: test] Error 1

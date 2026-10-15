@@ -74,6 +74,26 @@ second; later branch correction and report edits are excluded. No reviewer sessi
 
 | Commit | Kind (red/green/refactor/fix/docs) | What | Check (`checks/` file, exit) |
 |--------|------------------------------------|------|------------------------------|
+| `23636be` | red | Specify manual refusal configuration, lifecycle, replacements, history and permissions. | [day5-red.txt](checks/day5-red.txt): 7 failures, 227 passes; nonzero exit, exact exit not recorded. |
+| `a3fd292` | red | Add refusal HTTP contract, browser flow and frontend configuration expectations before frontend implementation. | No separate red execution captured for this commit. |
+| `38ad3ac` | green | Implement the additive migration, durable assignments, refusal/replacement endpoints, permissions and shared voting timing; adapt HTTP fixtures and test populated legacy upgrades. | [day5-final-test.txt](checks/day5-final-test.txt): full candidate passed (235 backend, 128 frontend, 76 contract, 4 browser tests), exit 0. |
+| `083e2b8` | green | Add refusal configuration, confirmation, replacement/history UI and verification documentation. | [day5-final-test.txt](checks/day5-final-test.txt), [day5-lint2.txt](checks/day5-lint2.txt), [day5-build.txt](checks/day5-build.txt): passed, exit 0. |
+| `ccacb43` | docs | Correct the recorded branch after fast-forwarding the original `feat/capstone-day5` branch. | Commit hooks passed; no separate check log. |
+| `2d5b453` | docs | Record implementation model, session timestamps and elapsed duration. | Commit hooks passed; no separate check log. |
+
+These are original implementation logs moved from `/tmp` without changing their contents; the `.log` suffix
+was changed to `.txt` because the repository ignores `*.log`. They were produced by direct commands,
+not `scripts/capture.sh`, so they have no capture-script commit, dirty-state or exit-code headers/footers.
+Successful exit codes above are from the recorded executions; the initial red command's exact exit code
+was not retained. The final checks ran against the uncommitted implementation candidate before its green
+commits, rather than separately against each commit. The frontend build preceded the final migration-test
+addition and minor lint/copy fixes.
+
+Intermediate attempts are retained in [day5-green.txt](checks/day5-green.txt),
+[day5-test.txt](checks/day5-test.txt), [day5-test2.txt](checks/day5-test2.txt),
+[day5-test3.txt](checks/day5-test3.txt), [day5-test4.txt](checks/day5-test4.txt) and
+[day5-lint.txt](checks/day5-lint.txt). They include failing fixture/lint iterations; they are not final passing evidence.
+
 
 ## 5. Fresh review
 

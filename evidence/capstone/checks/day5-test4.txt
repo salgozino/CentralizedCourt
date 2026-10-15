@@ -1,0 +1,36 @@
+cd backend && yarn test
+
+Test Suites: 18 passed, 18 total
+Tests:       234 passed, 234 total
+Snapshots:   0 total
+Time:        20.469 s
+Ran all test suites.
+cd frontend && yarn test
+
+ RUN  v5.0.3 /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend
+
+
+ Test Files  13 passed (13)
+      Tests  128 passed (128)
+   Start at  15:27:03
+   Duration  12.53s (environment 38%, tests 27%, transform 21%, import 8%, setup 6%)
+
+cd contract-tests && yarn test
+
+Test Suites: 6 passed, 6 total
+Tests:       76 passed, 76 total
+Snapshots:   0 total
+Time:        25.514 s
+Ran all test suites.
+cd e2e && yarn test
+
+Running 4 tests using 1 worker
+
+(node:1801786) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/draw.spec.ts:3:5 › a creator draws a random jury and sees the jurors by name with their deadlines (3.3s)
+  ✓  2 [chromium] › tests/manual-draw.spec.ts:3:5 › a creator picks a manual panel by hand and it is seated in that order (4.9s)
+  ✓  3 [chromium] › tests/refusal.spec.ts:3:5 › a juror confirms refusal, loses access, and the creator fills the vacant seat with linked history (8.5s)
+  ✓  4 [chromium] › tests/vote.spec.ts:3:5 › drawn jurors vote in the browser and the case becomes "Resolved: Buyer" (10.5s)
+
+  4 passed (36.1s)

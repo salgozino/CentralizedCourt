@@ -1,0 +1,40 @@
+cd backend && yarn test
+
+Test Suites: 19 passed, 19 total
+Tests:       235 passed, 235 total
+Snapshots:   0 total
+Time:        21.694 s
+Ran all test suites.
+cd frontend && yarn test
+
+ RUN  v5.0.3 /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-capstone/frontend
+
+
+ Test Files  13 passed (13)
+      Tests  128 passed (128)
+   Start at  15:30:05
+   Duration  13.36s (environment 34%, tests 26%, transform 25%, import 10%, setup 6%)
+
+  Transform  transforming modules took 18.12s · 25% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
+
+cd contract-tests && yarn test
+
+Test Suites: 6 passed, 6 total
+Tests:       76 passed, 76 total
+Snapshots:   0 total
+Time:        24.698 s, estimated 26 s
+Ran all test suites.
+cd e2e && yarn test
+
+Running 4 tests using 1 worker
+
+(node:1804928) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/draw.spec.ts:3:5 › a creator draws a random jury and sees the jurors by name with their deadlines (2.8s)
+  ✓  2 [chromium] › tests/manual-draw.spec.ts:3:5 › a creator picks a manual panel by hand and it is seated in that order (5.0s)
+  ✓  3 [chromium] › tests/refusal.spec.ts:3:5 › a juror confirms refusal, loses access, and the creator fills the vacant seat with linked history (9.0s)
+  ✓  4 [chromium] › tests/vote.spec.ts:3:5 › drawn jurors vote in the browser and the case becomes "Resolved: Buyer" (10.6s)
+
+  4 passed (35.9s)
