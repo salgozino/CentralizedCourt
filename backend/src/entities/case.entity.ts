@@ -17,7 +17,7 @@ export type CaseStatus = (typeof CASE_STATUSES)[number];
 export const SELECTION_METHODS = ['random', 'manual'] as const;
 export type SelectionMethod = (typeof SELECTION_METHODS)[number];
 
-/** A dispute. Immutable after creation except for status/result, which later slices advance. */
+/** A dispute. Immutable after creation except for status/result, which the draw and the votes advance. */
 @Entity('cases')
 export class Case {
   @PrimaryGeneratedColumn()
@@ -38,7 +38,7 @@ export class Case {
   @Column({ type: 'text' })
   description: string;
 
-  /** Outcome labels in the creator's order; votes will reference a label. */
+  /** Outcome labels in the creator's order; votes reference an index into this list. */
   @Column({ type: 'simple-json' })
   outcomes: string[];
 
