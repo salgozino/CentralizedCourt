@@ -177,7 +177,9 @@ Process deviations:
 
 ## 6. Human inspection
 
-- Inspected by / when / commit:
+- Inspected by / when / commit: human (repository owner) / started 2026-10-15T17:05-03:00 / `223586ca84a7311dcfcce8cd4b5027144f3eb45f`
+- Diff under inspection: `git diff master...223586c -- . ':(exclude)evidence'`, 40 files, +1030/−68
+  (source +525/−51, tests +424/−17, migration +42/−0, docs +39/−0).
 
 | Check | How | Result |
 |-------|-----|--------|
@@ -202,7 +204,7 @@ Process deviations:
 | Did the reviewer share memory with the implementer? | No | Different providers and harnesses (Codex vs Claude Code), separate worktrees; Engram memory was disabled for the reviewer's Claude Code session, so it was also isolated from other Claude Code sessions |
 | Did the reviewer see my check outputs before running its own? | No | `evidence/` (including `checks/`) was deleted in its worktree; its own log starts at 16:24:14 |
 | Was the candidate unchanged between pass 1 and pass 2? | Yes | Reviewer `HEAD` `5366bc7` in both contamination runs; the fix commits landed in the implementer worktree only |
-| Did I edit the prompt after seeing a reviewer result? | No | `reviewer-prompt.md` last changed in `008d347`, before the reviewer started |
+| Did I edit the prompt after seeing a reviewer result? | No | `reviewer-prompt.md` last changed in `008d347` (16:19), before the reviewer started (16:23). The prompt was first published in `fa9ceef` (16:16) with a wrong commit SHA in input 3 and amended into `008d347` before launch; the remote branch was then rewritten with a lease-protected forced update, so `fa9ceef` is no longer on the remote |
 
 Contamination found and its impact: none in the reviewer's inputs. `contamination-post1.txt` reports
 `LEAK: ../CentralizedCourt-review/evidence present`, which is a false positive: the prompt (line 17) asked the
