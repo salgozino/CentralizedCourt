@@ -127,7 +127,7 @@ be able to resume from here.
 3. Manual juror picker (branch `feat/manual-juror-picker`): `GET /api/cases/:id/eligible-jurors` returns
    `[{jurorId, name}]` (eligible = juror role, active, not admin; ordered by id) only to the case creator or an admin,
    with the draw's 401/404/403. The creator picks exactly `panelSize` jurors with checkboxes; the panel keeps the
-   picking order. The checkboxes are native, not Kleros-styled.
+   picking order: a Kleros `DropdownSelect` adds jurors and each pick is a removable `Tag` chip.
 4. The vote form reads the clock once per page load; a deadline crossed while the page is open is rejected by the
    backend (409), and the UI then reloads the case and shows it resolved with the reason (`364133f`).
 5. Visual pass (2026-10-15, Playwright screenshots): low contrast in two Kleros library styles, the disabled
