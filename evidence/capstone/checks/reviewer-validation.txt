@@ -1,0 +1,194 @@
+Validation log — adversarial review of CentralizedCourt refusal change
+Worktree HEAD: 5366bc73786c4c5710e7f112530d497783afcda4
+Note: evidence/ was absent from working tree at start (pre-existing unstaged deletions); only this log file was created.
+
+=== 2026-10-15T16:24:14-03:00 ===
+$ git rev-parse HEAD; git diff 4457a20...HEAD -- . ':(exclude)evidence' | sha256sum; git diff --stat 4457a20...HEAD -- . ':(exclude)evidence' | tail -1
+--- tail -5 ---
+5366bc73786c4c5710e7f112530d497783afcda4
+d75fec56e6f4770d76a525b21903caf3ac19c9ddd9b2b5983ff544738a740333  -
+ 39 files changed, 975 insertions(+), 67 deletions(-)
+--- exit code: 0 ---
+
+=== 2026-10-15T16:24:34-03:00 ===
+$ make setup
+--- tail -15 ---
+➤ YN0000: └ Completed
+➤ YN0000: ┌ Link step
+➤ YN0007: │ @parcel/watcher@npm:2.6.0 must be built because it never has been before or the last one failed
+➤ YN0007: │ unrs-resolver@npm:1.12.2 must be built because it never has been before or the last one failed
+➤ YN0000: └ Completed in 1s 95ms
+➤ YN0000: · Done in 1s 378ms
+cd e2e && yarn install && yarn playwright install chromium
+➤ YN0000: · Yarn 4.13.0
+➤ YN0000: ┌ Resolution step
+➤ YN0000: └ Completed
+➤ YN0000: ┌ Fetch step
+➤ YN0000: └ Completed
+➤ YN0000: ┌ Link step
+➤ YN0000: └ Completed in 0s 239ms
+➤ YN0000: · Done in 0s 414ms
+--- exit code: 0 ---
+
+=== 2026-10-15T16:24:53-03:00 ===
+$ make lint
+--- tail -15 ---
+yarn prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+yarn eslint --max-warnings 0 backend contract-tests e2e
+cd frontend && yarn lint
+--- exit code: 0 ---
+
+=== 2026-10-15T16:26:41-03:00 ===
+$ make test
+--- tail -60 ---
+cd backend && yarn test
+
+Test Suites: 19 passed, 19 total
+Tests:       235 passed, 235 total
+Snapshots:   0 total
+Time:        24.695 s
+Ran all test suites.
+cd frontend && yarn test
+
+ RUN  v5.0.3 /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-review/frontend
+
+
+ Test Files  13 passed (13)
+      Tests  128 passed (128)
+   Start at  16:25:19
+   Duration  14.83s (environment 32%, tests 31%, transform 23%, import 9%, setup 5%)
+
+cd contract-tests && yarn test
+
+Test Suites: 6 passed, 6 total
+Tests:       76 passed, 76 total
+Snapshots:   0 total
+Time:        27.969 s
+Ran all test suites.
+cd e2e && yarn test
+
+Running 4 tests using 1 worker
+
+  ✓  1 [chromium] › tests/draw.spec.ts:3:5 › a creator draws a random jury and sees the jurors by name with their deadlines (2.3s)
+  ✓  2 [chromium] › tests/manual-draw.spec.ts:3:5 › a creator picks a manual panel by hand and it is seated in that order (5.1s)
+  ✓  3 [chromium] › tests/refusal.spec.ts:3:5 › a juror confirms refusal, loses access, and the creator fills the vacant seat with linked history (7.6s)
+  ✓  4 [chromium] › tests/vote.spec.ts:3:5 › drawn jurors vote in the browser and the case becomes "Resolved: Buyer" (10.9s)
+
+  4 passed (32.2s)
+--- exit code: 0 ---
+
+=== 2026-10-15T16:28:06-03:00 ===
+$ cd contract-tests && yarn jest --rootDir "$PWD" --roots /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/tests --testRegex 'probe\.contract\.test\.ts$' --globalSetup "$PWD/src/globalSetup.ts" --globalTeardown "$PWD/src/globalTeardown.ts" --testEnvironment node --testTimeout 180000 2>&1 | grep -E 'PROBE|✓|✕|Tests:|●|Error|expect' 
+--- tail -80 ---
+    PROBE P1 random+refusalWindow create: [422,{"detail":[{"type":"custom","loc":["body","payload","refusalWindowSeconds"],"msg":"Refusal duration is required only for manual selection"}]}]
+    PROBE P1 random status / refuse: ["voting",409,{"detail":"The refusal window is closed"}]
+    PROBE P2: {"otherCreatorReplace":403,"jurorReplace":403,"outsiderReplace":403,"occupiedSeat":409,"ownerRefuse":403,"adminRefuse":403,"otherCreatorRefuse":404,"refuseWithReasonField":422,"voteDuringRefusal":409,"refuse":200,"doubleRefuse":404,"refusedVote":404,"refusedGet":404,"refusedListHasCase":false,"refusedEligible":403,"refusedReplaceSelf":403,"ownerReseatRefused":[422,"Previously drawn jurors cannot be selected again"],"ownerSeatsSeatedJuror":[422,"Previously drawn jurors cannot be selected again"],"ownerSeatsAdmin":422,"ownerSeatsPlainUser":422,"ownerSeatsMissing":422,"positionOutOfPanel":409,"positionString":422,"extraField":422,"noCsrf":403,"raceReplace":[[200,null],[409,"This seat is occupied"]],"historyAfterRace":[[2,0,4,null,true],[3,1,5,null,false],[4,2,6,null,false],[5,0,7,2,false]],"currentJurors":[7,5,6],"jurorSeesHistory":true}
+    PROBE P3: {"removeRoleWhileInRefusal":409,"raceRefuse":[200,200],"keepRoleRefused":200}
+    PROBE P4 drawn: [200,"refusal","2026-10-15T19:28:04.072Z"]
+    PROBE P4: {"lateRefuse":[409,"The refusal window is closed"],"statusAfterWindow":"voting","deadline":"2026-10-15T19:30:04.072Z","vote":200,"final":["resolved","A"]}
+Tests:       4 passed, 4 total
+--- exit code: 0 ---
+
+=== 2026-10-15T16:28:15-03:00 ===
+$ cd backend && yarn build >/dev/null && SECRET_KEY=probe node /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/migration-down.js "$PWD" /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/down.sqlite3
+--- tail -10 ---
+up: InitialSchema1791217121849,CreateCases1791407902997,CreateCaseJurors1791480908801,AddUserName1791572083979,AddJurorVotes1791900000000,AddRefusal1792000000000
+down: OK id,caseId,userId,position,drawnAt,deadline,outcomeIndex,votedAt
+--- exit code: 0 ---
+
+=== 2026-10-15T16:28:28-03:00 ===
+$ cd backend && SECRET_KEY=probe DB_PATH=/tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/drift.sqlite3 node dist/cli/migrate.js >/dev/null && SECRET_KEY=probe DB_PATH=/tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/drift.sqlite3 yarn typeorm-ts-node-commonjs migration:generate -d src/data-source.ts --dryrun /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/Drift 2>&1 | grep -v '^\s*$' | cut -c1-220
+--- tail -40 ---
+[32m[37m        await queryRunner.query(`DROP INDEX "IDX_2ebefde32f44a05779ac6cc85b"`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE TABLE "temporary_case_jurors" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "caseId" integer NOT NULL, "userId" integer NOT NULL, "position" smallint NOT NULL, "drawn
+[32m[37m        await queryRunner.query(`INSERT INTO "temporary_case_jurors"("id", "caseId", "userId", "position", "drawnAt", "deadline", "outcomeIndex", "votedAt", "selectedById", "predecessorId", "refusalDeadline", "
+[32m[37m        await queryRunner.query(`DROP TABLE "case_jurors"`);[32m[39m
+[32m[37m        await queryRunner.query(`ALTER TABLE "temporary_case_jurors" RENAME TO "case_jurors"`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "assignment_successor" ON "case_jurors" ("predecessorId") WHERE predecessorId IS NOT NULL`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "current_case_seat" ON "case_jurors" ("caseId", "position") WHERE refusedAt IS NULL`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_8fdc4225faee16a947a22469e6" ON "case_jurors" ("caseId", "userId") `);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE INDEX "IDX_2ebefde32f44a05779ac6cc85b" ON "case_jurors" ("userId") `);[32m[39m
+[32m[37m    }[32m[39m
+[32m[37m[32m[39m
+[32m[37m    public async down(queryRunner: QueryRunner): Promise<void> {[32m[39m
+[32m[37m        await queryRunner.query(`DROP INDEX "IDX_2ebefde32f44a05779ac6cc85b"`);[32m[39m
+[32m[37m        await queryRunner.query(`DROP INDEX "IDX_8fdc4225faee16a947a22469e6"`);[32m[39m
+[32m[37m        await queryRunner.query(`DROP INDEX "current_case_seat"`);[32m[39m
+[32m[37m        await queryRunner.query(`DROP INDEX "assignment_successor"`);[32m[39m
+[32m[37m        await queryRunner.query(`ALTER TABLE "case_jurors" RENAME TO "temporary_case_jurors"`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE TABLE "case_jurors" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "caseId" integer NOT NULL, "userId" integer NOT NULL, "position" smallint NOT NULL, "drawnAt" dateti
+[32m[37m        await queryRunner.query(`INSERT INTO "case_jurors"("id", "caseId", "userId", "position", "drawnAt", "deadline", "outcomeIndex", "votedAt", "selectedById", "predecessorId", "refusalDeadline", "refusedAt"
+[32m[37m        await queryRunner.query(`DROP TABLE "temporary_case_jurors"`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE INDEX "IDX_2ebefde32f44a05779ac6cc85b" ON "case_jurors" ("userId") `);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_8fdc4225faee16a947a22469e6" ON "case_jurors" ("caseId", "userId") `);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "current_case_seat" ON "case_jurors" ("caseId", "position") WHERE refusedAt IS NULL`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "assignment_successor" ON "case_jurors" ("predecessorId") WHERE predecessorId IS NOT NULL`);[32m[39m
+[32m[37m        await queryRunner.query(`DROP INDEX "IDX_2ebefde32f44a05779ac6cc85b"`);[32m[39m
+[32m[37m        await queryRunner.query(`DROP INDEX "IDX_8fdc4225faee16a947a22469e6"`);[32m[39m
+[32m[37m        await queryRunner.query(`DROP INDEX "current_case_seat"`);[32m[39m
+[32m[37m        await queryRunner.query(`DROP INDEX "assignment_successor"`);[32m[39m
+[32m[37m        await queryRunner.query(`ALTER TABLE "case_jurors" RENAME TO "temporary_case_jurors"`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE TABLE "case_jurors" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "caseId" integer NOT NULL, "userId" integer NOT NULL, "position" smallint NOT NULL, "drawnAt" dateti
+[32m[37m        await queryRunner.query(`INSERT INTO "case_jurors"("id", "caseId", "userId", "position", "drawnAt", "deadline", "outcomeIndex", "votedAt", "selectedById", "predecessorId", "refusalDeadline", "refusedAt"
+[32m[37m        await queryRunner.query(`DROP TABLE "temporary_case_jurors"`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE INDEX "IDX_2ebefde32f44a05779ac6cc85b" ON "case_jurors" ("userId") `);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_8fdc4225faee16a947a22469e6" ON "case_jurors" ("caseId", "userId") `);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "current_case_seat" ON "case_jurors" ("caseId", "position") WHERE refusedAt IS NULL`);[32m[39m
+[32m[37m        await queryRunner.query(`CREATE UNIQUE INDEX "assignment_successor" ON "case_jurors" ("predecessorId") WHERE predecessorId IS NOT NULL`);[32m[39m
+[32m[37m    }[32m[39m
+[32m[37m[32m[39m
+[32m[37m}[32m[39m
+[32m[37m[32m[39m
+--- exit code: 0 ---
+
+=== 2026-10-15T16:28:54-03:00 ===
+$ cd /home/koki/Documents/Kleros/repos/AIDrivenDevelopment/CentralizedCourt-review/backend && SECRET_KEY=probe DB_PATH=/tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/drift.sqlite3 yarn typeorm-ts-node-commonjs migration:generate -d src/data-source.ts --dryrun /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/Drift 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep 'CREATE TABLE "temporary_case_jurors"' | grep -o 'CONSTRAINT "FK_[a-z0-9]*" FOREIGN KEY ("[a-zA-Z]*")' 
+--- tail -6 ---
+CONSTRAINT "FK_2ebefde32f44a05779ac6cc85b3" FOREIGN KEY ("userId")
+CONSTRAINT "FK_cb9d7d0d1ea8cba35258159dc6d" FOREIGN KEY ("caseId")
+CONSTRAINT "FK_2ebefde32f44a05779ac6cc85b3" FOREIGN KEY ("userId")
+CONSTRAINT "FK_cb9d7d0d1ea8cba35258159dc6d" FOREIGN KEY ("caseId")
+CONSTRAINT "FK_aa87fbab816a516220f2dfff87e" FOREIGN KEY ("selectedById")
+CONSTRAINT "FK_0c33dda85365ad7ede0c0680fb6" FOREIGN KEY ("predecessorId")
+--- exit code: 0 ---
+
+=== Reviewer notes ===
+Probe sources (scratch, outside repo): /tmp/claude-1000/-home-koki-Documents-Kleros-repos-AIDrivenDevelopment-CentralizedCourt-review/1c2a60e1-53d6-44bf-bb30-762d57461a33/scratchpad/probe/{tests/probe.contract.test.ts,migration-down.js}
+Files read: AGENTS.md, EXPERIMENT.md, NEXT_STEPS.md, diff of backend/src, frontend/src, contract-tests/tests/refusal.contract.test.ts,
+  backend/test/refusal*.spec.ts, e2e/tests/refusal.spec.ts. Not read: git log, commit messages, evidence/ (excluded).
+AC1 (manual-selection cases): PASS. AC1 (random-draw cases): FAIL (P1 -> refuse 409; replacement is a manual pick, never a draw).
+Security probe P2/P3: no permission bypass found (403/404/409/422 as expected; CSRF enforced; concurrent replace -> 200/409).
+Defects: [major] random cases excluded (jury.service.ts:41, dto.ts:14 superRefine); [major] replacement is manual, no draw, vacancy waits indefinitely;
+  [major] entity/migration FK drift (AddRefusal.ts:6,8 vs case-juror.entity.ts:44,51);
+  [minor] no refusal reason recorded; [minor] dead DrawOut.assignmentHistory (dto.ts:125); [minor] non-null assertion chain DrawJurorsPanel.tsx:89;
+  [minor] refusal history (who refused, when) visible to co-jurors (cases.controller.ts:115).
+Verdict: REJECT against brief as written (ACCEPT WITH FIXES if manual-only scope was an approved narrowing).
+=== 2026-10-15T16:37:58-03:00 ===
+$ git show HEAD:evidence/capstone/day5-specs.md | sha256sum; grep -n 'refusalDeadline\|advance\|exact\|toBe(409)\|creator' backend/test/refusal.spec.ts | head -25; grep -n '@Put\|@Patch' backend/src/cases/cases.controller.ts || echo 'no PUT/PATCH on cases (duration immutable)'
+--- tail -30 ---
+e23622c32c7e0371a6b85068ad5c774953f2b35add1c6a7d9f2a26f6b21f50ad  -
+37:    owner = await new Browser(app).login('creator1@example.com');
+61:    expect((await jurors[0].post(`${path(id)}/vote`, { outcomeIndex: 0 })).status).toBe(409);
+63:    expect((await jurors[0].post(`${path(id)}/refuse`, {})).status).toBe(409);
+83:    expect((await owner.post(`${path(id)}/replace`, { position: 1, jurorId: ids[3] })).status).toBe(409);
+98:      refusalDeadline: '2030-01-01T00:03:00.000Z',
+119:    expect((await jurors[2].post(`${path(id)}/refuse`, {})).status).toBe(409);
+129:    const user = await app.dataSource.getRepository(User).findOneByOrFail({ email: 'creator1@example.com' });
+133:    expect((await admin.put(`/api/admin/users/${user.id}/roles`, { roles: ['creator'] })).status).toBe(409);
+137:    expect((await admin.put(`/api/admin/users/${user.id}/roles`, { roles: ['creator'] })).status).toBe(200);
+161:      creatorId: (await app.dataSource.getRepository(User).findOneByOrFail({ email: 'creator1@example.com' })).id,
+no PUT/PATCH on cases (duration immutable)
+--- exit code: 0 ---
+
+
+=== Re-evaluation against day5-specs.md (read from HEAD; sha256 e23622c3…50ad) — 2026-10-15 ===
+Withdrawn as spec'd behavior: random cases out of scope (Q1/Q6), manual replacement (Q2/Q11), indefinite vacancy (Q7),
+  no refusal reason (Q4), history visible to current jurors (Q10).
+Kept: [major] entity/migration FK mismatch (AddRefusal.ts:6,8 vs case-juror.entity.ts:44,51) — not covered by spec;
+  [minor] dead DrawOut.assignmentHistory (dto.ts:125); [minor] non-null assertion chain (DrawJurorsPanel.tsx:89).
+Spec checks: exact cutoff (refusal.spec.ts:62-63 + probe P4), shared logical voting start (refusal.spec.ts:58-71 + P4 deadline = refusalDeadline+120s),
+  pool exhaustion/multi-vacancy (refusal.spec.ts:112-120), role removal (P3, refusal.spec.ts:128-137), immutability (no PUT/PATCH on cases),
+  strict-TDD red commit: NOT VERIFIED (git log out of bounds).
+Verdict: ACCEPT WITH FIXES.
