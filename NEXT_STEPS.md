@@ -126,7 +126,11 @@ be able to resume from here.
 3. Manual juror picker UI remains pending (not an acceptance criterion).
 4. Manual selection "juror accepts" step is not implemented: manual assignment seats jurors directly.
 5. The vote form reads the clock once per page load; a deadline crossed while the page is open is rejected by the
-   backend (409) instead of hiding the form.
+   backend (409), and the UI then reloads the case and shows it resolved with the reason (`364133f`).
+6. Visual pass (2026-10-15, Playwright screenshots): low contrast in two Kleros library styles, the disabled
+   "Cast vote" button and unchecked radio circles. Fixing it means overriding library styles; not done.
+7. The frontend "Your voting deadline has passed." message is a fallback that is practically unreachable today: every
+   juror of a panel gets the same deadline, so once it passes the case resolves and the vote form disappears.
 
 ## Open questions / decisions pending
 
