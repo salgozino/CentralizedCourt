@@ -20,6 +20,7 @@ export default function DrawJurorsPanel({
   const [drawing, setDrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  if (c.status === 'refusal' && c.jurors.length === 0) return null;
   if (c.jurors.length > 0) return <DrawnJurorsList value={c} />;
   if (c.status !== 'awaiting_jurors') return null;
   if (c.selectionMethod === 'manual') {
@@ -84,8 +85,10 @@ function DrawnJurorsList({ value: c }: Readonly<{ value: CaseDetail }>) {
             <span className="text-klerosUIComponentsSecondaryText">
               {' '}
               {/* Deadlines no longer matter once the case is resolved. */}
-              {c.status !== 'resolved' && `· Vote by ${new Date(juror.deadline).toLocaleString()} `}·{' '}
-              {voteStatus(c, juror)}
+              {c.status === 'refusal'
+                ? `· Refuse by ${new Date(c.assignmentHistory!.find((a) => a.jurorId === juror.jurorId && !a.refusedAt)!.refusalDeadline!).toLocaleString()} `
+                : c.status !== 'resolved' && `· Vote by ${new Date(juror.deadline).toLocaleString()} `}
+              · {voteStatus(c, juror)}
             </span>
           </li>
         ))}

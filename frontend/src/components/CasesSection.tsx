@@ -1,5 +1,5 @@
 import { Button } from '@kleros/ui-components-library';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { listCases } from '../api';
 import { resultLabel } from '../cases/presentation';
 import { useCaseRead } from '../cases/useCaseRead';
@@ -11,9 +11,13 @@ const card = 'rounded-base border border-klerosUIComponentsStroke bg-klerosUICom
 
 function CaseList({ canCreate, onUnauthorized }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state, retry } = useCaseRead(listCases, onUnauthorized);
   return (
     <section aria-labelledby="cases-heading" className="flex flex-col gap-5">
+      {(location.state as { refused?: boolean } | null)?.refused && (
+        <p role="status">Assignment refused. You no longer have juror access to that case.</p>
+      )}
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 id="cases-heading" className="text-2xl font-semibold">

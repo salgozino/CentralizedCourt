@@ -39,11 +39,11 @@ test('a creator picks a manual panel by hand and it is seated in that order', as
   await assign.click();
 
   const panel = page.getByRole('list', { name: 'Drawn jurors' }).getByRole('listitem');
-  await expect(panel).toHaveText([/^Juror 3 · Vote by/, /^Juror 1 · Vote by/, /^Juror 5 · Vote by/]);
-  await expect(page.getByText('Voting').first()).toBeVisible();
+  await expect(panel).toHaveText([/^Juror 3 · Refuse by/, /^Juror 1 · Refuse by/, /^Juror 5 · Refuse by/]);
+  await expect(page.getByText('Refusal period', { exact: true }).first()).toBeVisible();
   await expect(add).toHaveCount(0);
 
   await page.reload();
-  await expect(panel).toHaveText([/^Juror 3 · Vote by/, /^Juror 1 · Vote by/, /^Juror 5 · Vote by/]);
+  await expect(panel).toHaveText([/^Juror 3 · Refuse by/, /^Juror 1 · Refuse by/, /^Juror 5 · Refuse by/]);
   expect(consoleErrors).toEqual([]);
 });

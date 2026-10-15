@@ -25,6 +25,7 @@ export type CaseDraft = {
   description: string;
   outcomes: string[];
   window: Record<WindowPart, string>;
+  refusalWindow: Record<WindowPart, string>;
   panelSize: number;
   selectionMethod: SelectionMethod;
 };
@@ -35,6 +36,7 @@ export type DraftErrors = {
   /** Per outcome, same order as the draft. */
   outcomes?: Array<string | undefined>;
   window?: string;
+  refusalWindow?: string;
   windowParts?: WindowPart[];
   /** Anything that cannot be shown next to a field. */
   general?: string;
@@ -45,6 +47,7 @@ export const emptyDraft = (): CaseDraft => ({
   description: '',
   outcomes: ['', ''],
   window: { days: '0', hours: '0', minutes: '2' },
+  refusalWindow: { days: '1', hours: '0', minutes: '0' },
   panelSize: 3,
   selectionMethod: 'random',
 });
@@ -103,6 +106,10 @@ export function validateDraft(draft: CaseDraft): DraftErrors {
   if (outcomes) errors.outcomes = outcomes;
 
   Object.assign(errors, validateWindow(draft.window));
+  if (draft.selectionMethod === 'manual') {
+    const error = validateWindow(draft.refusalWindow).window;
+    if (error) errors.refusalWindow = error;
+  }
   return errors;
 }
 
@@ -116,6 +123,7 @@ export const toNewCase = (draft: CaseDraft): NewCase => ({
   voteWindowSeconds: draftWindowSeconds(draft.window),
   panelSize: draft.panelSize,
   selectionMethod: draft.selectionMethod,
+  ...(draft.selectionMethod === 'manual' ? { refusalWindowSeconds: draftWindowSeconds(draft.refusalWindow) } : {}),
 });
 
 const isIssue = (value: unknown): value is ValidationIssue =>
@@ -129,6 +137,7 @@ export function errorsFromServer(detail: unknown, outcomeCount: number): DraftEr
     if (!isIssue(issue)) continue;
     const [, , field, index] = issue.loc;
     if (field === 'title' || field === 'description') errors[field] ??= issue.msg;
+    else if (field === 'refusalWindowSeconds') errors.refusalWindow ??= issue.msg;
     else if (field === 'voteWindowSeconds') {
       errors.window ??= issue.msg;
       errors.windowParts = WINDOW_PARTS.map((p) => p.key);

@@ -3,6 +3,25 @@
 Update at the end of each session. Keep it short: someone (or a fresh agent) should
 be able to resume from here.
 
+## Day 5: manual juror refusal
+
+- Implemented on `feat/day5-refusal`; specification: `evidence/capstone/day5-specs.md`.
+- New manual requests require `refusalWindowSeconds` (60 seconds–30 days); random requests reject it.
+  The form defaults to 24 hours and offers days/hours/minutes separately from voting duration.
+- Apply the additive `AddRefusal` migration with `make migrate` before starting an existing development DB.
+  No reset or reseed is needed. Existing cases keep a null duration and their original lifecycle/deadlines.
+- New manual draws enter `refusal`. `POST /api/cases/:id/refuse` with `{}` permanently vacates the caller's
+  current seat before its individual cutoff. The UI confirms access loss and permanent exclusion first.
+- Creator/admin `POST /api/cases/:id/replace` takes `{position, jurorId}` (zero-based seat position).
+  It fills one vacancy with a fresh refusal window; the candidate list excludes everyone ever drawn for the case.
+- Case details include `assignmentHistory` for the new lifecycle: assignment ID, seat, juror, selecting actor,
+  draw/refusal timestamps and predecessor ID. Refused rows remain stored and grant no juror permissions.
+- Only current seats count for access, voting, resolution and active-case role-removal restrictions.
+  Independent creator/admin permissions remain after refusal.
+- Reads and votes lazily advance a complete panel at its latest refusal deadline, with one shared full voting
+  window calculated from that logical start. Vacancies wait indefinitely. The UI offers Refresh case.
+- Verification and live permission matrix: `evidence/capstone/day5-verification.md`.
+
 ## Current state
 
 - Project brief, acceptance list and logs created.

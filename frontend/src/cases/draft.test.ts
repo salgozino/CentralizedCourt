@@ -103,6 +103,7 @@ test('toNewCase trims text and converts the window to seconds', () => {
     voteWindowSeconds: 129_600,
     panelSize: 5,
     selectionMethod: 'manual',
+    refusalWindowSeconds: 86400,
   });
 });
 
