@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotFoundException, Param, Put, UseGuards } from '@nestjs/common';
+import { Body, ConflictException, Controller, Get, NotFoundException, Param, Put, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { z } from 'zod';
@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { CsrfGuard } from '../auth/csrf.guard';
 import { UserOut, toUserOut } from '../auth/dto';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
+import { VotingService } from '../cases/voting.service';
 import { User } from '../entities';
 import { UnprocessableException } from '../http/errors';
 import { ZodBodyPipe } from '../http/validation';
@@ -32,7 +33,10 @@ const parseUserId = (raw: string): number => {
 @Controller('admin')
 @UseGuards(SessionAuthGuard, CsrfGuard, AdminGuard)
 export class AdminController {
-  constructor(@InjectRepository(User) private readonly users: Repository<User>) {}
+  constructor(
+    @InjectRepository(User) private readonly users: Repository<User>,
+    private readonly voting: VotingService,
+  ) {}
 
   @Get('users')
   async list(): Promise<UserOut[]> {
@@ -48,6 +52,10 @@ export class AdminController {
     // Beyond 2^53 the id cannot exist anyway (and would not round-trip through Number).
     const user = Number.isSafeInteger(id) ? await this.users.findOneBy({ id }) : null;
     if (!user) throw new NotFoundException('Not Found');
+    // A juror can only lose the role while no active case depends on them; nothing changes on refusal.
+    if (user.isJuror && !payload.roles.includes('juror') && (await this.voting.isOnActiveCase(user.id))) {
+      throw new ConflictException('Cannot remove the juror role while the user is on an active case');
+    }
     user.isCreator = payload.roles.includes('creator');
     user.isJuror = payload.roles.includes('juror');
     await this.users.save(user);

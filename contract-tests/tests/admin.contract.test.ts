@@ -56,9 +56,44 @@ describe('role mutations', () => {
   });
 
   it('removes roles', async () => {
-    const res = await (await adminClient()).put(rolesUrl(idOf('juror1@example.com')), { roles: [] });
+    // Seeded jurors may sit on cases other files left voting, so grant and remove on a user no draw has seen.
+    const admin = await adminClient();
+    expect((await admin.put(rolesUrl(idOf('user@example.com')), { roles: ['creator', 'juror'] })).status).toBe(200);
+    const res = await admin.put(rolesUrl(idOf('user@example.com')), { roles: [] });
     expect(res.status).toBe(200);
     expect(res.body.roles).toEqual(['user']);
+  });
+
+  it('refuses to remove the juror role while the user is on an active case', async () => {
+    const admin = await adminClient();
+    expect((await admin.put(rolesUrl(idOf('user@example.com')), { roles: ['juror'] })).status).toBe(200);
+    const creator = await new Client().login('creator1@example.com');
+    const created = await creator.post('/api/cases', {
+      title: 'Juror role removal',
+      description: 'Details',
+      outcomes: ['A', 'B'],
+      voteWindowSeconds: 3600,
+      selectionMethod: 'manual',
+    });
+    const panel = ['user@example.com', 'juror4@example.com', 'juror5@example.com'];
+    const draw = await creator.post(`/api/cases/${created.body.id}/draw`, { jurorIds: panel.map(idOf) });
+    expect(draw.status).toBe(200);
+
+    const refused = await admin.put(rolesUrl(idOf('user@example.com')), { roles: [] });
+    expect(refused.status).toBe(409);
+    expect(refused.body).toEqual({ detail: 'Cannot remove the juror role while the user is on an active case' });
+    expect(
+      (await admin.get(LIST_URL)).body.find((u: { email: string }) => u.email === 'user@example.com').roles,
+    ).toEqual(['juror', 'user']);
+
+    // Once every juror voted the case is resolved and the role can go (this also leaves no active case behind).
+    for (const email of panel) {
+      const juror = await new Client().login(email);
+      expect((await juror.post(`/api/cases/${created.body.id}/vote`, { outcomeIndex: 0 })).status).toBe(200);
+    }
+    const removed = await admin.put(rolesUrl(idOf('user@example.com')), { roles: [] });
+    expect(removed.status).toBe(200);
+    expect(removed.body.roles).toEqual(['user']);
   });
 
   it('keeps the admin flag when an admin edits their own roles', async () => {

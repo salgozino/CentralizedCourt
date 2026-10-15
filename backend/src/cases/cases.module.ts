@@ -13,6 +13,8 @@ import { VotingService } from './voting.service';
 @Module({
   imports: [AuthModule, TypeOrmModule.forFeature([Case, CaseJuror])],
   controllers: [CasesController],
+  // The admin roles endpoint asks whether a juror is on an active case.
+  exports: [VotingService],
   providers: [
     CreatorGuard,
     JuryService,
