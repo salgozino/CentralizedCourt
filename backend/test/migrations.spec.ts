@@ -37,6 +37,7 @@ describe('migrations', () => {
     const columns = await dataSource.query('PRAGMA table_info(case_jurors)');
     expect(columns).toContainEqual(expect.objectContaining({ name: 'outcomeIndex', notnull: 0, dflt_value: null }));
     expect(columns).toContainEqual(expect.objectContaining({ name: 'votedAt', notnull: 0, dflt_value: null }));
+    await dataSource.undoLastMigration(); // refusal fields
     await dataSource.undoLastMigration();
     const reverted = (await dataSource.query('PRAGMA table_info(case_jurors)')).map((c: { name: string }) => c.name);
     expect(reverted).toEqual(['id', 'caseId', 'userId', 'position', 'drawnAt', 'deadline']);
@@ -46,7 +47,8 @@ describe('migrations', () => {
   it('adds a required name column without a default and round-trips a user name', async () => {
     const columns = await dataSource.query('PRAGMA table_info(users)');
     expect(columns).toContainEqual(expect.objectContaining({ name: 'name', notnull: 1, dflt_value: null }));
-    // Revert and reapply on the empty DB (vote columns first): resetting development data is explicitly permitted.
+    // Revert refusal, votes and names on the empty DB.
+    await dataSource.undoLastMigration();
     await dataSource.undoLastMigration();
     await dataSource.undoLastMigration();
     expect(await dataSource.query('PRAGMA table_info(users)')).not.toContainEqual(
@@ -145,7 +147,8 @@ describe('migrations', () => {
     const ds = await migratedDataSource(revertPath);
     const tableNames = async () =>
       (await ds.query(`SELECT name FROM sqlite_master WHERE type = 'table'`)).map((t: { name: string }) => t.name);
-    // First revert the vote columns, then the user-name migration.
+    // First revert refusal, vote columns, then user names.
+    await ds.undoLastMigration();
     await ds.undoLastMigration();
     await ds.undoLastMigration();
     expect(await ds.query('PRAGMA table_info(users)')).not.toContainEqual(expect.objectContaining({ name: 'name' }));

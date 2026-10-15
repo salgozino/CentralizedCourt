@@ -1,4 +1,4 @@
-import { User } from '../src/entities';
+import { Case, User } from '../src/entities';
 
 import { Browser, BootedApp, bootApp } from './helpers';
 
@@ -28,8 +28,11 @@ describe('removing the juror role', () => {
       description: 'Details',
       outcomes: ['A', 'B'],
       voteWindowSeconds: WINDOW_SECONDS,
+      refusalWindowSeconds: 60,
       selectionMethod: 'manual',
     });
+    // Legacy stored manual cases keep immediate voting.
+    await booted.dataSource.getRepository(Case).update(created.body.id, { refusalWindowSeconds: null });
     const jurorIds = ['juror1', 'juror2', 'juror3'].map((n) => ids[`${n}@example.com`]);
     expect((await owner.post(`/api/cases/${created.body.id}/draw`, { jurorIds })).status).toBe(200);
     return created.body.id;

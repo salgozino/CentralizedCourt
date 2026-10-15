@@ -48,21 +48,25 @@ export class VotingService {
    */
   async isOnActiveCase(userId: number): Promise<boolean> {
     const openSeats = () =>
-      this.dataSource
-        .getRepository(CaseJuror)
-        .find({ where: { userId, case: { status: 'voting' } }, relations: { case: true } });
+      this.dataSource.getRepository(CaseJuror).find({
+        where: [
+          { userId, refusedAt: IsNull(), case: { status: 'voting' } },
+          { userId, refusedAt: IsNull(), case: { status: 'refusal' } },
+        ],
+        relations: { case: true },
+      });
     const seats = await openSeats();
     if (!seats.length) return false;
     await this.settle(seats.map((s) => s.caseId));
     return (await openSeats()).length > 0;
   }
 
-  /** Settles the given cases that are due; cases not in `voting` are left untouched. */
+  /** Advances refusal at its logical cutoff, then resolves voting cases that are due. */
   async settle(caseIds: number[]): Promise<void> {
     if (!caseIds.length) return;
     const now = this.clock();
     await this.dataSource.transaction(async (manager) => {
-      const rows = await manager.findBy(Case, { id: In(caseIds), status: 'voting' });
+      const rows = await manager.findBy(Case, { id: In(caseIds), status: In(['voting', 'refusal']) });
       for (const row of rows) await this.settleOne(manager, row, now);
     });
   }
@@ -75,7 +79,9 @@ export class VotingService {
     const now = this.clock();
     const rejection = await this.dataSource.transaction(async (manager) => {
       const row = await manager.findOneByOrFail(Case, { id: caseId });
-      const seat = await manager.findOneByOrFail(CaseJuror, { caseId, userId });
+      await this.openVoting(manager, row, now);
+      if (row.status === 'refusal') return NOT_VOTING;
+      const seat = await manager.findOneByOrFail(CaseJuror, { caseId, userId, refusedAt: IsNull() });
       if (isPastDeadline(seat, now)) {
         if (row.status === 'voting') await this.settleOne(manager, row, now);
         return DEADLINE_PASSED;
@@ -94,8 +100,24 @@ export class VotingService {
     if (rejection) throw new ConflictException(rejection);
   }
 
+  private async openVoting(manager: EntityManager, row: Case, now: Date): Promise<void> {
+    if (row.status !== 'refusal') return;
+    const panel = await manager.findBy(CaseJuror, { caseId: row.id, refusedAt: IsNull() });
+    if (panel.length !== row.panelSize || panel.some((j) => !j.refusalDeadline || j.refusalDeadline > now)) return;
+    const start = Math.max(...panel.map((j) => j.refusalDeadline!.getTime()));
+    await manager.update(
+      CaseJuror,
+      { caseId: row.id, refusedAt: IsNull() },
+      { deadline: new Date(start + row.voteWindowSeconds * 1000) },
+    );
+    await manager.update(Case, { id: row.id, status: 'refusal' }, { status: 'voting' });
+    row.status = 'voting';
+  }
+
   private async settleOne(manager: EntityManager, row: Case, now: Date): Promise<void> {
-    const panel = await manager.findBy(CaseJuror, { caseId: row.id });
+    await this.openVoting(manager, row, now);
+    if (row.status !== 'voting') return;
+    const panel = await manager.findBy(CaseJuror, { caseId: row.id, refusedAt: IsNull() });
     if (!isDue(panel, now)) return;
     await manager.update(
       Case,

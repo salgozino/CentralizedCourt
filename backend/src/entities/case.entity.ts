@@ -11,7 +11,7 @@ import {
 
 import { User } from './user.entity';
 
-export const CASE_STATUSES = ['awaiting_jurors', 'voting', 'resolved'] as const;
+export const CASE_STATUSES = ['awaiting_jurors', 'refusal', 'voting', 'resolved'] as const;
 export type CaseStatus = (typeof CASE_STATUSES)[number];
 
 export const SELECTION_METHODS = ['random', 'manual'] as const;
@@ -45,6 +45,10 @@ export class Case {
   /** Each juror's deadline is their draw time plus this window. */
   @Column({ type: 'integer' })
   voteWindowSeconds: number;
+
+  /** Null preserves the lifecycle of cases created before refusal was introduced. */
+  @Column({ type: 'integer', nullable: true })
+  refusalWindowSeconds: number | null;
 
   /** Number of jurors (one vote each). */
   @Column({ type: 'smallint', default: 3 })

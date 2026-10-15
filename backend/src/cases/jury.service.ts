@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, IsNull } from 'typeorm';
 
 import { Case, CaseJuror, User } from '../entities';
 import { UnprocessableException } from '../http/errors';
@@ -27,15 +27,19 @@ export class JuryService {
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
-  /** Seats the panel and moves the case to voting; `jurorIds` is only given for manual cases. */
-  async seat(caseId: number, jurorIds?: number[]): Promise<{ case: Case; jurors: CaseJuror[] }> {
+  /** Seats the panel and enters refusal for new manual cases, otherwise voting. */
+  async seat(caseId: number, jurorIds?: number[], selectedById?: number): Promise<{ case: Case; jurors: CaseJuror[] }> {
     return this.dataSource.transaction(async (manager) => {
       const row = await manager.findOneByOrFail(Case, { id: caseId });
       if (row.status !== 'awaiting_jurors') throw new ConflictException(NOT_AWAITING);
       const panel = await this.select(manager, row, jurorIds);
 
       // Conditional update so two concurrent draws cannot both seat a panel.
-      const moved = await manager.update(Case, { id: caseId, status: 'awaiting_jurors' }, { status: 'voting' });
+      const moved = await manager.update(
+        Case,
+        { id: caseId, status: 'awaiting_jurors' },
+        { status: row.refusalWindowSeconds === null ? 'voting' : 'refusal' },
+      );
       if (!moved.affected) throw new ConflictException(NOT_AWAITING);
 
       const drawnAt = this.clock();
@@ -44,6 +48,11 @@ export class JuryService {
         panel.map((user, position) =>
           manager.create(CaseJuror, {
             caseId,
+            selectedById: selectedById ?? null,
+            predecessorId: null,
+            refusedAt: null,
+            refusalDeadline:
+              row.refusalWindowSeconds === null ? null : new Date(drawnAt.getTime() + row.refusalWindowSeconds * 1000),
             userId: user.id,
             user,
             position,
@@ -55,6 +64,52 @@ export class JuryService {
         ),
       );
       return { case: await manager.findOneByOrFail(Case, { id: caseId }), jurors };
+    });
+  }
+
+  async refuse(caseId: number, userId: number): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const row = await manager.findOneByOrFail(Case, { id: caseId });
+      const seat = await manager.findOneBy(CaseJuror, { caseId, userId, refusedAt: IsNull() });
+      const now = this.clock();
+      if (row.status !== 'refusal' || !seat?.refusalDeadline || now >= seat.refusalDeadline) {
+        throw new ConflictException('The refusal window is closed');
+      }
+      const result = await manager.update(CaseJuror, { id: seat.id, refusedAt: IsNull() }, { refusedAt: now });
+      if (!result.affected) throw new ConflictException('The refusal is final');
+    });
+  }
+
+  async replace(caseId: number, position: number, jurorId: number, selectedById: number): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const row = await manager.findOneByOrFail(Case, { id: caseId });
+      if (row.status !== 'refusal' || position >= row.panelSize)
+        throw new ConflictException('No vacant seat at this position');
+      const history = await manager.find(CaseJuror, { where: { caseId }, order: { id: 'DESC' } });
+      if (history.some((j) => j.position === position && j.refusedAt === null))
+        throw new ConflictException('This seat is occupied');
+      const predecessor = history.find((j) => j.position === position);
+      if (!predecessor) throw new ConflictException('No vacant seat at this position');
+      if (history.some((j) => j.userId === jurorId))
+        throw new UnprocessableException('Previously drawn jurors cannot be selected again');
+      const [user] = await this.assigned(manager, [jurorId]);
+      const drawnAt = this.clock();
+      await manager.save(
+        CaseJuror,
+        manager.create(CaseJuror, {
+          caseId,
+          position,
+          userId: user.id,
+          selectedById,
+          predecessorId: predecessor.id,
+          drawnAt,
+          refusalDeadline: new Date(drawnAt.getTime() + row.refusalWindowSeconds! * 1000),
+          refusedAt: null,
+          deadline: new Date(drawnAt.getTime() + row.voteWindowSeconds * 1000),
+          outcomeIndex: null,
+          votedAt: null,
+        }),
+      );
     });
   }
 

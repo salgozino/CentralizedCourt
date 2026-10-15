@@ -56,6 +56,7 @@ describe('acceptance: one case end to end', () => {
       description: 'Details',
       outcomes: ['A', 'B'],
       voteWindowSeconds: 120,
+      refusalWindowSeconds: 60,
       selectionMethod: 'manual',
     });
     const seated = await creator.post(`/api/cases/${manual.body.id}/draw`, {

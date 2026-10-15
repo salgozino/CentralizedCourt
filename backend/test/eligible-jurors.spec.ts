@@ -7,6 +7,7 @@ const payload = {
   description: 'Details',
   outcomes: ['A', 'B'],
   voteWindowSeconds: 120,
+  refusalWindowSeconds: 60,
   selectionMethod: 'manual',
 };
 

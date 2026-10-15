@@ -26,6 +26,7 @@ describe('create case over HTTP', () => {
       id: expect.any(Number),
       creatorId: creator.id,
       ...validCase,
+      refusalWindowSeconds: null,
       panelSize: 3,
       selectionMethod: 'random',
       status: 'awaiting_jurors',
@@ -45,6 +46,7 @@ describe('create case over HTTP', () => {
       title: '  Padded title  ',
       outcomes: [' A ', 'B', 'C'],
       panelSize: 5,
+      refusalWindowSeconds: 60,
       selectionMethod: 'manual',
     });
     expect(res.status).toBe(201);
