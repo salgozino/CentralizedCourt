@@ -88,6 +88,12 @@ The implementer (OpenAI) and the reviewer (Anthropic) are different providers, s
 | `083e2b8` | green | Add refusal configuration, confirmation, replacement/history UI and verification documentation. | [day5-final-test.txt](checks/day5-final-test.txt), [day5-lint2.txt](checks/day5-lint2.txt), [day5-build.txt](checks/day5-build.txt): passed, exit 0. |
 | `ccacb43` | docs | Correct the recorded branch after fast-forwarding the original `feat/capstone-day5` branch. | Commit hooks passed; no separate check log. |
 | `2d5b453` | docs | Record implementation model, session timestamps and elapsed duration. | Commit hooks passed; no separate check log. |
+| `5366bc7` | docs | Preserve the implementation check logs and their provenance (review candidate). | Commit hooks passed; no separate check log. |
+| `008d347` | docs | Review bundle (`review/`) and reviewer prompt, before launching the reviewer. | Commit hooks passed; no separate check log. |
+| `9e33e5c` | red | Reproduce the review findings: migration/entity foreign-key drift and the crash on missing refusal history. | [day5-review-red.txt](checks/day5-review-red.txt): `make test`, 1 failed / 235 passed backend, exit 2. [day5-review-ui-red.txt](checks/day5-review-ui-red.txt): frontend, 2 failed / 128 passed, exit 2. |
+| `f8c5600`, `2f7f00f`, `7b449b2`, `ec80f08` | docs | Record reviewer passes 1 and 2, contamination checks, reviewer log, findings and memory isolation. | Commit hooks passed; no separate check log. |
+| `c86e3de` | fix | Name the refusal foreign keys as TypeORM expects, drop the unused `DrawOut.assignmentHistory`, handle incomplete juror history in `DrawJurorsPanel`. | [day5-review-green.txt](checks/day5-review-green.txt): `make test` passed (130 frontend, 76 contract, 4 browser), exit 0. [day5-review-lint.txt](checks/day5-review-lint.txt), [day5-review-migrate.txt](checks/day5-review-migrate.txt): exit 0. [day5-review-schema-dryrun.txt](checks/day5-review-schema-dryrun.txt): "No changes in database schema were found", exit 2 (expected; see below). [day5-review-ui-green.txt](checks/day5-review-ui-green.txt): frontend 130 passed, exit 0. |
+| `aff1450` | docs | Record reviewer pass 3 (fix check). | Commit hooks passed; no separate check log. |
 
 These are original implementation logs moved from `/tmp` without changing their contents; the `.log` suffix
 was changed to `.txt` because the repository ignores `*.log`. They were produced by direct commands,
@@ -101,6 +107,15 @@ Intermediate attempts are retained in [day5-green.txt](checks/day5-green.txt),
 [day5-test.txt](checks/day5-test.txt), [day5-test2.txt](checks/day5-test2.txt),
 [day5-test3.txt](checks/day5-test3.txt), [day5-test4.txt](checks/day5-test4.txt) and
 [day5-lint.txt](checks/day5-lint.txt). They include failing fixture/lint iterations; they are not final passing evidence.
+
+Review-fix checks (`day5-review-*`) were captured with `scripts/capture.sh`, so they carry commit, dirty-state and
+exit-code headers. The red captures ran on `008d347` with the new tests uncommitted (3 dirty files), just before
+`9e33e5c`. The green captures ran on `2f7f00f` with the fix uncommitted, just before `c86e3de`. The schema dry run
+exits 2 because TypeORM's `migration:generate` treats "no changes" as an error; that message is the passing result.
+[day5-review-ui-fixture-error.txt](checks/day5-review-ui-fixture-error.txt) is an intermediate frontend run (2 failed)
+caused by a test fixture, fixed before `day5-review-ui-green.txt`. Because that fixture change came after the full
+`make test` capture, the full suite on the final `c86e3de` content was run by the reviewer in pass 3 (section 5), not
+by the implementer.
 
 
 ## 5. Fresh review
